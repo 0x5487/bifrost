@@ -42,7 +42,7 @@ func main() {
 		println("ip:" + ip)
 		rawQuery := c.Request.URL.RawQuery
 
-		// forward request
+		// exchange url
 		url := api.TargetUrl + requestPath
 
 		if len(rawQuery) > 0 {
@@ -53,7 +53,7 @@ func main() {
 		req, err := http.NewRequest(method, url, c.Request.Body)
 
 		// copy the request header
-		//copyHeader(req.Header, c.Request.Header)
+		copyHeader(req.Header, c.Request.Header)
 
 		// send to target
 		client := &http.Client{}
@@ -64,24 +64,14 @@ func main() {
 		defer resp.Body.Close()
 
 		// copy the response header
-		c.Writer.WriteHeader(resp.StatusCode)
-		//fmt.Println("response Headers:", resp.Header)
-		//copyHeader(c.Writer.Header(), resp.Header)
-		c.Writer.Header().Set("X-Forwarded-For", "127.0.2.31")
+		copyHeader(c.Writer.Header(), resp.Header)
+		c.Writer.Header().Set("X-Forwarded-For", "127.0.2.32")
 
-		//fmt.Println("response Body:", string(body))
+		// write body
 		body, _ := ioutil.ReadAll(resp.Body)
 		c.Writer.Write(body)
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 	})
 
 	nap.Run(":8080")
 }
 
-func copyHeader(dst, src http.Header) {
-	for k, vv := range src {
-		for _, v := range vv {
-			dst.Add(k, v)
-		}
-	}
-}
