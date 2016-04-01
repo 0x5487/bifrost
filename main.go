@@ -4,11 +4,17 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 )
 
 var (
 	_apis  []Api
 	client *http.Client
+)
+
+const (
+	MaxIdleConnections int = 8
+	RequestTimeout     int = 5
 )
 
 func init() {
@@ -20,16 +26,28 @@ func init() {
 	}
 
 	_apis = append(_apis, api)
-	client = &http.Client{}
+	client = createHTTPClient()
+}
+
+// createHTTPClient for connection re-use
+func createHTTPClient() *http.Client {
+	client := &http.Client{
+		Transport: &http.Transport{
+			MaxIdleConnsPerHost: MaxIdleConnections,
+		},
+		Timeout: time.Duration(RequestTimeout) * time.Second,
+	}
+
+	return client
 }
 
 func proxy(w http.ResponseWriter, r *http.Request) {
 	api := Api{
 		Name:             "Test",
 		RequestHost:      "localhost",
-		RequestPath:      "/api",
-		StripRequestPath: true,
-		TargetUrl:        "http://localhost:57822",
+		RequestPath:      "/json",
+		StripRequestPath: false,
+		TargetUrl:        "http://localhost:8000",
 	}
 
 	// if the request url doesn't match, we will by pass it
