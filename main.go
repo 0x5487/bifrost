@@ -1,11 +1,10 @@
 package main
 
 import (
-	"fmt"
 	"io/ioutil"
 	"napnap"
-	"net"
 	"net/http"
+	"strings"
 )
 
 var (
@@ -30,26 +29,38 @@ func main() {
 		api := Api{
 			Name:             "Test",
 			RequestHost:      "localhost",
-			RequestPath:      "/",
+			RequestPath:      "/api",
 			StripRequestPath: true,
-			TargetUrl:        "https://tw.yahoo.com",
+			TargetUrl:        "http://localhost",
+		}
+
+		// if the request url doesn't match, we will by pass it
+		requestPath := c.Request.URL.Path
+		if !strings.HasPrefix(requestPath, api.RequestPath) {
+			return
 		}
 
 		// get information
-		requestPath := c.Request.URL.Path
-		method := c.Request.Method
-		ip, _, _ := net.SplitHostPort(c.Request.RemoteAddr)
-		println("ip:" + ip)
-		rawQuery := c.Request.URL.RawQuery
+		//ip, _, _ := net.SplitHostPort(c.Request.RemoteAddr)
+		//println("ip:" + ip)
 
 		// exchange url
-		url := api.TargetUrl + requestPath
+		var url string
+		if api.StripRequestPath {
+			newPath := strings.TrimPrefix(requestPath, api.RequestPath)
+			url = api.TargetUrl + newPath
+		} else {
+			url = api.TargetUrl + requestPath
+		}
 
+		rawQuery := c.Request.URL.RawQuery
 		if len(rawQuery) > 0 {
 			url += "?" + rawQuery
 		}
 
-		fmt.Println("URL:>", url)
+		//fmt.Println("URL:>", url)
+
+		method := c.Request.Method
 		req, err := http.NewRequest(method, url, c.Request.Body)
 
 		// copy the request header
@@ -65,7 +76,7 @@ func main() {
 
 		// copy the response header
 		copyHeader(c.Writer.Header(), resp.Header)
-		c.Writer.Header().Set("X-Forwarded-For", "127.0.2.32")
+		//c.Writer.Header().Set("X-Forwarded-For", "127.0.2.32")
 
 		// write body
 		body, _ := ioutil.ReadAll(resp.Body)
@@ -74,4 +85,3 @@ func main() {
 
 	nap.Run(":8080")
 }
-
