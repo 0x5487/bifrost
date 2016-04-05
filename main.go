@@ -14,44 +14,43 @@ import (
 
 var (
 	_config Configuration
+	_logger *logger
 )
 
 func init() {
 	flag.Parse()
-	//read config file
+
+	//read and parse config file
 	var err error
 	rootDirPath, err := filepath.Abs(filepath.Dir(os.Args[0]))
 	if err != nil {
-		println(err)
-		panic(err)
+		log.Fatalf("file error: %v", err)
 	}
 
 	configPath := filepath.Join(rootDirPath, "config.yml")
 	file, err := ioutil.ReadFile(configPath)
 	if err != nil {
-		fmt.Printf("file error: %v\n", err)
-		os.Exit(1)
+		log.Fatalf("file error: %v", err)
 	}
 
-	// yml
 	err = yaml.Unmarshal(file, &_config)
 	if err != nil {
 		log.Fatalf("config error: %v", err)
 	}
-	/*
-		err = json.Unmarshal(file, &_config)
-		if err != nil {
-			fmt.Printf("config error: %v\n", err)
-			os.Exit(1)
-		}*/
-}
-
-func main() {
 
 	apis := _config.Apis
 	if len(apis) == 0 {
-		panic("no api entries are found.")
+		log.Fatalf("config error: no api entries were found.")
 	}
+
+	// setup logger
+	_logger = newLog()
+	if _config.Global.Debug {
+		_logger.mode = Debug
+	}
+}
+
+func main() {
 
 	/*
 		api1 := Api{}
@@ -104,7 +103,6 @@ func main() {
 	portValue := fmt.Sprintf(":%d", port)
 	err := nap.Run(portValue)
 	if err != nil {
-		println(err.Error())
+		log.Fatal(err)
 	}
-
 }

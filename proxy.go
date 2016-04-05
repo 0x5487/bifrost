@@ -70,8 +70,8 @@ func (p *Proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 		return
 	}
 
-	println("api host:", api.RequestHost)
-	println("api path:", api.RequestPath)
+	_logger.debugf("api host: %s ", api.RequestHost)
+	_logger.debugf("api path: %s", api.RequestPath)
 
 	// exchange url
 	var url string
@@ -87,7 +87,7 @@ func (p *Proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 		url += "?" + rawQuery
 	}
 
-	println("URL:>", url)
+	_logger.debugf("URL: %s", url)
 
 	method := c.Request.Method
 	outReq, err := http.NewRequest(method, url, c.Request.Body)
@@ -101,9 +101,9 @@ func (p *Proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	// send to target
 	resp, err := p.client.Do(outReq)
 	if err != nil {
-		panic(err)
+		_logger.debug(err)
+		return
 	}
-
 	defer func() {
 		// Drain and close the body to let the Transport reuse the connection
 		io.Copy(ioutil.Discard, resp.Body)
