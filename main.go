@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/jasonsoft/napnap"
 	"gopkg.in/yaml.v2"
@@ -100,9 +101,41 @@ func main() {
 		port = 8080
 	}
 
-	portValue := fmt.Sprintf(":%d", port)
-	err := nap.Run(portValue)
-	if err != nil {
-		log.Fatal(err)
-	}
+	// admin api
+	adminNap := napnap.New()
+	adminNap.Use(napnap.NewHealth())
+	adminRouter := napnap.NewRouter()
+	// verify all request which send to admin api and ensure the caller has valid admin token.
+	adminRouter.All("/v1/admin", authAdminEndpoint)
+	adminNap.Use(adminRouter)
+
+	consumerRouter := napnap.NewRouter()
+	consumerRouter.Post("/v1/admin/consumers", createConsumerEndpoint)
+	consumerRouter.Get("/v1/admin/consumers", getConsumerEndpoint)
+	consumerRouter.Delete("/v1/admin/consumers", deletedConsumerEndpoint)
+	adminNap.Use(consumerRouter)
+
+	// run two http servers on different ports
+	// one is for bifrost service and another is for admin api
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		// http server for admin api
+		err := adminNap.Run(":8001")
+		if err != nil {
+			log.Fatal(err)
+		}
+		wg.Done()
+	}()
+	wg.Add(1)
+	go func() {
+		// http server for bifrost service
+		portValue := fmt.Sprintf(":%d", port)
+		err := nap.Run(portValue)
+		if err != nil {
+			log.Fatal(err)
+		}
+		wg.Done()
+	}()
+	wg.Wait()
 }

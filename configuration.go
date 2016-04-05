@@ -13,16 +13,17 @@ type (
 
 	Configuration struct {
 		Global struct {
-			Cors struct {
+			AdminTokens      []string `yaml:"admin_tokens"`
+			ForwardRequestIP bool     `yaml:"forward_request_ip"`
+			Port             int      `yaml:"port"`
+			Debug            bool     `yaml:"debug"`
+			Cors             struct {
 				Enable         bool     `yaml:"enable"`
 				AllowedOrigins []string `yaml:"allowed_origins"`
 			}
 			Gzip struct {
 				Enable bool `yaml:"enable"`
 			}
-			ForwardRequestIP bool `yaml:"forward_request_ip"`
-			Port             int  `yaml:"port"`
-			Debug            bool `yaml:"debug"`
 		}
 		Apis []Api
 	}
