@@ -1,110 +1,110 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"io/ioutil"
-	"net/http"
-	"strings"
-	"time"
+	"log"
+	"os"
+	"path/filepath"
+
+	"github.com/jasonsoft/napnap"
+	"gopkg.in/yaml.v2"
 )
 
 var (
-	_apis  []Api
-	client *http.Client
-)
-
-const (
-	MaxIdleConnections int = 8
-	RequestTimeout     int = 5
+	_config Configuration
 )
 
 func init() {
-	api := Api{
-		Name:             "Test",
-		RequestHost:      "localhost",
-		RequestPath:      "/",
-		StripRequestPath: true,
-	}
-
-	_apis = append(_apis, api)
-	client = createHTTPClient()
-}
-
-// createHTTPClient for connection re-use
-func createHTTPClient() *http.Client {
-	client := &http.Client{
-		Transport: &http.Transport{
-			MaxIdleConnsPerHost: MaxIdleConnections,
-		},
-		Timeout: time.Duration(RequestTimeout) * time.Second,
-	}
-
-	return client
-}
-
-func proxy(w http.ResponseWriter, r *http.Request) {
-	api := Api{
-		Name:             "Test",
-		RequestHost:      "localhost",
-		RequestPath:      "/json",
-		StripRequestPath: false,
-		TargetUrl:        "http://localhost:8000",
-	}
-
-	// if the request url doesn't match, we will by pass it
-	requestPath := r.URL.Path
-	if !strings.HasPrefix(requestPath, api.RequestPath) {
-		return
-	}
-
-	// get information
-	//ip, _, _ := net.SplitHostPort(c.Request.RemoteAddr)
-	//println("ip:" + ip)
-
-	// exchange url
-	var url string
-	if api.StripRequestPath {
-		newPath := strings.TrimPrefix(requestPath, api.RequestPath)
-		url = api.TargetUrl + newPath
-	} else {
-		url = api.TargetUrl + requestPath
-	}
-
-	rawQuery := r.URL.RawQuery
-	if len(rawQuery) > 0 {
-		url += "?" + rawQuery
-	}
-
-	//println("URL:>", url)
-
-	method := r.Method
-	req, err := http.NewRequest(method, url, r.Body)
-
-	// copy the request header
-	copyHeader(req.Header, r.Header)
-	for _, h := range _hopHeaders {
-		req.Header.Del(h)
-	}
-
-	// send to target
-	resp, err := client.Do(req)
+	flag.Parse()
+	//read config file
+	var err error
+	rootDirPath, err := filepath.Abs(filepath.Dir(os.Args[0]))
 	if err != nil {
+		println(err)
 		panic(err)
 	}
-	defer resp.Body.Close()
 
-	// copy the response header
-	copyHeader(w.Header(), resp.Header)
-	//c.Writer.Header().Set("X-Forwarded-For", "127.0.2.32")
-	for _, h := range _hopHeaders {
-		w.Header().Del(h)
+	configPath := filepath.Join(rootDirPath, "config.yml")
+	file, err := ioutil.ReadFile(configPath)
+	if err != nil {
+		fmt.Printf("file error: %v\n", err)
+		os.Exit(1)
 	}
 
-	// write body
-	body, _ := ioutil.ReadAll(resp.Body)
-	w.Write(body)
+	// yml
+	err = yaml.Unmarshal(file, &_config)
+	if err != nil {
+		log.Fatalf("config error: %v", err)
+	}
+	/*
+		err = json.Unmarshal(file, &_config)
+		if err != nil {
+			fmt.Printf("config error: %v\n", err)
+			os.Exit(1)
+		}*/
 }
 
 func main() {
-	http.HandleFunc("/", proxy)
-	http.ListenAndServe(":8080", nil)
+
+	apis := _config.Apis
+	if len(apis) == 0 {
+		panic("no api entries are found.")
+	}
+
+	/*
+		api1 := Api{}
+		api1.Name = "Test"
+		api1.RequestHost = "*"
+		_config.Apis = append(_config.Apis, api1)
+
+		api2 := Api{}
+		api2.Name = "Test"
+		api2.RequestHost = "*"
+		_config.Apis = append(_config.Apis, api2)
+
+		d, err := yaml.Marshal(&_config)
+		if err != nil {
+			log.Fatalf("error: %v", err)
+		}
+
+		println(string(d))
+	*/
+
+	nap := napnap.New()
+
+	// turn on gzip feature
+	gzip := _config.Global.Gzip
+	if gzip.Enable {
+		nap.Use(napnap.NewGzip(napnap.DefaultCompression))
+	}
+
+	// turn on health check feature
+	nap.Use(napnap.NewHealth())
+
+	// turn on CORS feature
+	cors := _config.Global.Cors
+	if cors.Enable {
+		options := napnap.Options{}
+		options.AllowedOrigins = cors.AllowedOrigins
+		nap.Use(napnap.NewCors(options))
+	}
+
+	nap.Use(NewProxy())
+
+	// assign port number
+	port := _config.Global.Port
+	if port > 0 && port < 65535 {
+
+	} else {
+		port = 8080
+	}
+
+	portValue := fmt.Sprintf(":%d", port)
+	err := nap.Run(portValue)
+	if err != nil {
+		println(err.Error())
+	}
+
 }
