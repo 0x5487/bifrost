@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -22,7 +23,7 @@ func NewProxy() *Proxy {
 		Transport: &http.Transport{
 			MaxIdleConnsPerHost: 20,
 		},
-		Timeout: time.Duration(5) * time.Second,
+		Timeout: time.Duration(30) * time.Second,
 	}
 
 	// Hop-by-hop headers. These are removed when sent to the backend.
@@ -90,7 +91,14 @@ func (p *Proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	_logger.debugf("URL: %s", url)
 
 	method := c.Request.Method
-	outReq, err := http.NewRequest(method, url, c.Request.Body)
+	body, _ := ioutil.ReadAll(c.Request.Body)
+
+	outReq, err := http.NewRequest(method, url, bytes.NewReader(body))
+	if err != nil {
+		//TODO: panic err
+		_logger.debug(err)
+		return
+	}
 
 	// copy the request header
 	p.copyHeader(outReq.Header, c.Request.Header)
@@ -101,6 +109,7 @@ func (p *Proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	// send to target
 	resp, err := p.client.Do(outReq)
 	if err != nil {
+		//TODO: panic err
 		_logger.debug(err)
 		return
 	}
@@ -123,7 +132,7 @@ func (p *Proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	}
 
 	// write body
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ = ioutil.ReadAll(resp.Body)
 	c.Writer.Write(body)
 }
 
