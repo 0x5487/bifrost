@@ -50,7 +50,7 @@ func (p *Proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	requestHost := c.Request.URL.Host
 	requestPath := c.Request.URL.Path
 
-	// find api entry which match the request.  If no api entry is match, please ignore it.
+	// find api entry which match the request.
 	for _, apiEntry := range _config.Apis {
 		// ensure request host is match
 		if apiEntry.RequestHost != "*" {
@@ -68,7 +68,7 @@ func (p *Proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 
 	// none of api enties are match
 	if api == nil {
-		return
+		next(c)
 	}
 
 	_logger.debugf("api host: %s ", api.RequestHost)
@@ -126,7 +126,7 @@ func (p *Proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	}
 
 	// forward reuqest ip
-	if _config.Global.ForwardRequestIP {
+	if _config.ForwardRequestIP {
 		ip := c.RemoteIpAddress()
 		c.Writer.Header().Set("X-Forwarded-For", ip)
 	}

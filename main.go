@@ -14,8 +14,10 @@ import (
 )
 
 var (
-	_config Configuration
-	_logger *logger
+	_config       Configuration
+	_logger       *logger
+	_consumerRepo ConsumerRepository
+	_tokenRepo    TokenRepository
 )
 
 func init() {
@@ -46,9 +48,11 @@ func init() {
 
 	// setup logger
 	_logger = newLog()
-	if _config.Global.Debug {
+	if _config.Debug {
 		_logger.mode = Debug
 	}
+
+	_consumerRepo = newConsumerMemStore()
 }
 
 func main() {
@@ -75,7 +79,7 @@ func main() {
 	nap := napnap.New()
 
 	// turn on gzip feature
-	gzip := _config.Global.Gzip
+	gzip := _config.Gzip
 	if gzip.Enable {
 		nap.Use(napnap.NewGzip(napnap.DefaultCompression))
 	}
@@ -84,17 +88,19 @@ func main() {
 	nap.Use(napnap.NewHealth())
 
 	// turn on CORS feature
-	cors := _config.Global.Cors
+	cors := _config.Cors
 	if cors.Enable {
 		options := napnap.Options{}
 		options.AllowedOrigins = cors.AllowedOrigins
 		nap.Use(napnap.NewCors(options))
 	}
 
+	nap.UseFunc(identity)
 	nap.Use(NewProxy())
+	nap.UseFunc(notFound)
 
 	// assign port number
-	port := _config.Global.Port
+	port := _config.Port
 	if port > 0 && port < 65535 {
 
 	} else {
@@ -104,20 +110,28 @@ func main() {
 	// admin api
 	adminNap := napnap.New()
 	adminNap.Use(napnap.NewHealth())
-	adminRouter := napnap.NewRouter()
-	// verify all request which send to admin api and ensure the caller has valid admin token.
-	adminRouter.All("/v1/admin", authAdminEndpoint)
-	adminNap.Use(adminRouter)
+	adminNap.Use(newApplicationMiddleware())
 
-	consumerRouter := napnap.NewRouter()
-	consumerRouter.Post("/v1/admin/consumers", createConsumerEndpoint)
-	consumerRouter.Get("/v1/admin/consumers", getConsumerEndpoint)
-	consumerRouter.Delete("/v1/admin/consumers", deletedConsumerEndpoint)
-	adminNap.Use(consumerRouter)
+	// verify all request which send to admin api and ensure the caller has valid admin token.
+	adminRouter := napnap.NewRouter()
+	adminRouter.All("/v1", authEndpoint)
+
+	// consumer api
+	adminRouter.Put("/v1/consumers", upateOrCreateConsumerEndpoint)
+	adminRouter.Get("/v1/consumers/count", getConsumerCountEndpoint)
+	adminRouter.Get("/v1/consumers/:consumer_id", getConsumerEndpoint)
+	adminRouter.Delete("/v1/consumers/:consumer_id", deletedConsumerEndpoint)
+
+	// token api
+	adminRouter.Post("/v1/tokens", createTokenEndpoint)
+
+	adminNap.Use(adminRouter)
+	adminNap.UseFunc(notFound)
 
 	// run two http servers on different ports
 	// one is for bifrost service and another is for admin api
 	wg := &sync.WaitGroup{}
+
 	wg.Add(1)
 	go func() {
 		// http server for admin api
@@ -127,6 +141,7 @@ func main() {
 		}
 		wg.Done()
 	}()
+
 	wg.Add(1)
 	go func() {
 		// http server for bifrost service
@@ -137,5 +152,6 @@ func main() {
 		}
 		wg.Done()
 	}()
+
 	wg.Wait()
 }
