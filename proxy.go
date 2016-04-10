@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -46,6 +45,7 @@ func NewProxy() *Proxy {
 }
 
 func (p *Proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
+	_logger.debug("begin proxy")
 	var api *Api
 	requestHost := c.Request.URL.Host
 	requestPath := c.Request.URL.Path
@@ -60,10 +60,20 @@ func (p *Proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 		}
 
 		// ensure request path is match
-		if strings.HasPrefix(requestPath, apiEntry.RequestPath) {
-			api = &apiEntry
-			break
+		if strings.HasPrefix(requestPath, apiEntry.RequestPath) == false {
+			continue
 		}
+
+		// ensure the consumer has access permission
+		//consumer := c.Get("_consumer")
+		consumer := Consumer{}
+		if apiEntry.isAllow(consumer) == false {
+			c.Writer.WriteHeader(403)
+			return
+		}
+
+		api = &apiEntry
+		break
 	}
 
 	// none of api enties are match
@@ -95,9 +105,7 @@ func (p *Proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 
 	outReq, err := http.NewRequest(method, url, bytes.NewReader(body))
 	if err != nil {
-		//TODO: panic err
-		_logger.debug(err)
-		return
+		panic(err)
 	}
 
 	// copy the request header
@@ -109,15 +117,14 @@ func (p *Proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	// send to target
 	resp, err := p.client.Do(outReq)
 	if err != nil {
-		//TODO: panic err
-		_logger.debug(err)
-		return
+		// upsteam server is down
+		if strings.Contains(err.Error(), "No connection could be made") {
+			c.Writer.WriteHeader(504)
+			return
+		}
+		panic(err)
 	}
-	defer func() {
-		// Drain and close the body to let the Transport reuse the connection
-		io.Copy(ioutil.Discard, resp.Body)
-		resp.Body.Close()
-	}()
+	defer respClose(resp.Body)
 
 	// copy the response header
 	p.copyHeader(c.Writer.Header(), resp.Header)

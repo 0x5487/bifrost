@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -36,6 +35,8 @@ func init() {
 		log.Fatalf("file error: %v", err)
 	}
 
+	// parse yaml
+	_config = newConfiguration()
 	err = yaml.Unmarshal(file, &_config)
 	if err != nil {
 		log.Fatalf("config error: %v", err)
@@ -99,14 +100,6 @@ func main() {
 	nap.Use(NewProxy())
 	nap.UseFunc(notFound)
 
-	// assign port number
-	port := _config.Port
-	if port > 0 && port < 65535 {
-
-	} else {
-		port = 8080
-	}
-
 	// admin api
 	adminNap := napnap.New()
 	adminNap.Use(napnap.NewHealth())
@@ -145,8 +138,7 @@ func main() {
 	wg.Add(1)
 	go func() {
 		// http server for bifrost service
-		portValue := fmt.Sprintf(":%d", port)
-		err := nap.Run(portValue)
+		err := nap.Run(_config.Bind)
 		if err != nil {
 			log.Fatal(err)
 		}
