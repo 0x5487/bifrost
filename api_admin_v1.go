@@ -89,6 +89,21 @@ func deletedConsumerEndpoint(c *napnap.Context) {
 	c.JSON(204, nil)
 }
 
+func getTokenEndpoint(c *napnap.Context) {
+	key := c.Param("key")
+
+	if len(key) == 0 {
+		panic(AppError{ErrorCode: "NOT_FOUND", Message: "key was not found"})
+	}
+
+	token := _tokenRepo.Get(key)
+	if token == nil {
+		panic(AppError{ErrorCode: "NOT_FOUND", Message: "token was not found"})
+	}
+
+	c.JSON(200, token)
+}
+
 func createTokenEndpoint(c *napnap.Context) {
 	var token Token
 	err := c.BindJSON(&token)
@@ -106,10 +121,9 @@ func createTokenEndpoint(c *napnap.Context) {
 	}
 
 	newToken := newToken(token.ConsumerID)
-	err = _tokenRepo.Create(newToken)
+	err = _tokenRepo.Insert(newToken)
 	if err != nil {
 		panic(err)
 	}
-
 	c.JSON(201, newToken)
 }

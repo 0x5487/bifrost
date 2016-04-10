@@ -47,6 +47,11 @@ func init() {
 		log.Fatalf("config error: no api entries were found.")
 	}
 
+	err = _config.isValid()
+	if err != nil {
+		log.Fatalf("config error: %v", err)
+	}
+
 	// setup logger
 	_logger = newLog()
 	if _config.Debug {
@@ -54,6 +59,7 @@ func init() {
 	}
 
 	_consumerRepo = newConsumerMemStore()
+	_tokenRepo = newTokenMemStore()
 }
 
 func main() {
@@ -116,6 +122,7 @@ func main() {
 	adminRouter.Delete("/v1/consumers/:consumer_id", deletedConsumerEndpoint)
 
 	// token api
+	adminRouter.Get("/v1/tokens/:key", getTokenEndpoint)
 	adminRouter.Post("/v1/tokens", createTokenEndpoint)
 
 	adminNap.Use(adminRouter)

@@ -87,7 +87,7 @@ func newConfiguration() Configuration {
 	}
 }
 
-func (c Configuration) isValid() bool {
+func (c Configuration) isValid() error {
 	// TODO: need to implement the features
-	return true
+	return nil
 }
