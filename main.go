@@ -17,6 +17,7 @@ var (
 	_logger       *logger
 	_consumerRepo ConsumerRepository
 	_tokenRepo    TokenRepository
+	_status       *status
 )
 
 func init() {
@@ -84,6 +85,8 @@ func main() {
 	*/
 
 	nap := napnap.New()
+	_status = newStatusMiddleware()
+	nap.Use(_status)
 
 	// turn on gzip feature
 	gzip := _config.Gzip
@@ -113,7 +116,8 @@ func main() {
 
 	// verify all request which send to admin api and ensure the caller has valid admin token.
 	adminRouter := napnap.NewRouter()
-	adminRouter.All("/v1", authEndpoint)
+	adminRouter.All("/", authEndpoint)
+	adminRouter.Get("/status", getStatus)
 
 	// consumer api
 	adminRouter.Put("/v1/consumers", upateOrCreateConsumerEndpoint)

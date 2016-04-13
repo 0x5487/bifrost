@@ -127,3 +127,7 @@ func createTokenEndpoint(c *napnap.Context) {
 	}
 	c.JSON(201, newToken)
 }
+
+func getStatus(c *napnap.Context) {
+	c.JSON(200, _status)
+}
