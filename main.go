@@ -149,7 +149,7 @@ func main() {
 	wg.Add(1)
 	go func() {
 		// http server for bifrost service
-		err := nap.Run(_config.Bind)
+		err := nap.RunAll(_config.Binds)
 		if err != nil {
 			log.Fatal(err)
 		}

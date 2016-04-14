@@ -68,7 +68,7 @@ func (a Api) isAllow(consumer Consumer) bool {
 
 type Configuration struct {
 	Debug            bool     `yaml:"debug"`
-	Bind             string   `yaml:"bind"`
+	Binds            []string `yaml:"binds"`
 	AdminTokens      []string `yaml:"admin_tokens"`
 	ForwardRequestIP bool     `yaml:"forward_request_ip"`
 	Cors             struct {
@@ -83,7 +83,7 @@ type Configuration struct {
 
 func newConfiguration() Configuration {
 	return Configuration{
-		Bind: ":8080",
+		Binds: []string{":8080"},
 	}
 }
 
