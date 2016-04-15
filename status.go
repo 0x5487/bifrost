@@ -25,10 +25,10 @@ func (w *responseWriterWithLength) Length() int {
 
 type status struct {
 	sync.Mutex
-	TotalRequests int64     `json:"total_request"`
-	NetworkIn     int64     `json:"network_in"`
-	NetworkOut    int64     `json:"network_out"`
-	StartAt       time.Time `json:"start_at"`
+	RequestCount int64     `json:"request_count"`
+	NetworkIn    int64     `json:"network_in"`
+	NetworkOut   int64     `json:"network_out"`
+	StartAt      time.Time `json:"start_at"`
 }
 
 func newStatusMiddleware() *status {
@@ -40,7 +40,7 @@ func newStatusMiddleware() *status {
 
 func (s *status) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	s.Lock()
-	s.TotalRequests++
+	s.RequestCount++
 	if c.Request.ContentLength > 0 {
 		s.NetworkIn += c.Request.ContentLength
 	}
