@@ -105,6 +105,10 @@ func main() {
 		nap.Use(napnap.NewCors(options))
 	}
 
+	if _config.ForwardRequestID {
+		nap.UseFunc(requestIDMiddleware())
+	}
+
 	nap.UseFunc(identity)
 	nap.Use(NewProxy())
 	nap.UseFunc(notFound)

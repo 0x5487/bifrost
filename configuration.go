@@ -71,6 +71,7 @@ type Configuration struct {
 	Binds            []string `yaml:"binds"`
 	AdminTokens      []string `yaml:"admin_tokens"`
 	ForwardRequestIP bool     `yaml:"forward_request_ip"`
+	ForwardRequestID bool     `yaml:"forward_requst_id"`
 	Cors             struct {
 		Enable         bool     `yaml:"enable"`
 		AllowedOrigins []string `yaml:"allowed_origins"`

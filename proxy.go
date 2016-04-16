@@ -113,6 +113,18 @@ func (p *Proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 		outReq.Header.Del(h)
 	}
 
+	// forward reuqest ip
+	if _config.ForwardRequestIP {
+		ip := c.RemoteIpAddress()
+		outReq.Header.Set("X-Forwarded-For", ip)
+	}
+
+	// forward reuqest id
+	if _config.ForwardRequestID {
+		requestID := c.Get("request_id").(string)
+		outReq.Header.Set("X-Request-Id", requestID)
+	}
+
 	// send to target
 	resp, err := p.client.Do(outReq)
 	if err != nil {
@@ -129,12 +141,6 @@ func (p *Proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	p.copyHeader(c.Writer.Header(), resp.Header)
 	for _, h := range p.hopHeaders {
 		c.Writer.Header().Del(h)
-	}
-
-	// forward reuqest ip
-	if _config.ForwardRequestIP {
-		ip := c.RemoteIpAddress()
-		c.Writer.Header().Set("X-Forwarded-For", ip)
 	}
 
 	// write body
