@@ -79,16 +79,24 @@ type Configuration struct {
 	Gzip struct {
 		Enable bool `yaml:"enable"`
 	}
-	Apis []Api
+	Token TokenSetting
+	Apis  []Api
 }
 
 func newConfiguration() Configuration {
 	return Configuration{
 		Binds: []string{":8080"},
+		Token: TokenSetting{
+			Timeout: 10,
+		},
 	}
 }
 
 func (c Configuration) isValid() error {
 	// TODO: need to implement the features
 	return nil
+}
+
+type TokenSetting struct {
+	Timeout int
 }

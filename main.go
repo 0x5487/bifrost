@@ -97,16 +97,16 @@ func main() {
 	// turn on health check feature
 	nap.Use(napnap.NewHealth())
 
+	if _config.ForwardRequestID {
+		nap.UseFunc(requestIDMiddleware())
+	}
+
 	// turn on CORS feature
 	cors := _config.Cors
 	if cors.Enable {
 		options := napnap.Options{}
 		options.AllowedOrigins = cors.AllowedOrigins
 		nap.Use(napnap.NewCors(options))
-	}
-
-	if _config.ForwardRequestID {
-		nap.UseFunc(requestIDMiddleware())
 	}
 
 	nap.UseFunc(identity)
@@ -117,6 +117,7 @@ func main() {
 	adminNap := napnap.New()
 	adminNap.Use(napnap.NewHealth())
 	adminNap.Use(newApplicationMiddleware())
+	adminNap.UseFunc(requestIDMiddleware())
 
 	// verify all request which send to admin api and ensure the caller has valid admin token.
 	adminRouter := napnap.NewRouter()
@@ -131,6 +132,8 @@ func main() {
 
 	// token api
 	adminRouter.Get("/v1/tokens/:key", getTokenEndpoint)
+	adminRouter.Get("/v1/tokens", getTokensEndpoint)
+	adminRouter.Delete("/v1/tokens/:key", deleteTokenEndpoint)
 	adminRouter.Post("/v1/tokens", createTokenEndpoint)
 
 	adminNap.Use(adminRouter)

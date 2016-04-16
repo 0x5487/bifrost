@@ -7,7 +7,7 @@ import (
 )
 
 func notFound(c *napnap.Context, next napnap.HandlerFunc) {
-	c.Writer.WriteHeader(404)
+	c.Status(404)
 }
 
 type AppError struct {
@@ -49,8 +49,8 @@ func (m ApplicationMiddleware) Invoke(c *napnap.Context, next napnap.HandlerFunc
 			_logger.debug(err)
 			appError = AppError{
 				ErrorCode: "UNKNOWN_ERROR",
+				Message:   "An unknown error has occurred.",
 			}
-
 			c.JSON(500, appError)
 		}
 	}()

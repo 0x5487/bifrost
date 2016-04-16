@@ -62,12 +62,12 @@ func (cs *ConsumerMemStore) Insert(consumer *Consumer) error {
 		return AppError{ErrorCode: "INVALID_DATA", Message: "consumer app filed was invalid."}
 	}
 	consumer.ID = uuid.NewV4().String()
-	now := time.Now()
+	now := time.Now().UTC()
 	consumer.CreatedAt = now
 	consumer.UpdatedAt = now
 	cs.Lock()
+	defer cs.Unlock()
 	cs.data[consumer.ID] = consumer
-	cs.Unlock()
 	return nil
 }
 
@@ -78,15 +78,15 @@ func (cs *ConsumerMemStore) Update(consumer *Consumer) error {
 	now := time.Now()
 	consumer.UpdatedAt = now
 	cs.Lock()
+	defer cs.Unlock()
 	cs.data[consumer.ID] = consumer
-	cs.Unlock()
 	return nil
 }
 
 func (cs *ConsumerMemStore) Delete(id string) error {
 	cs.Lock()
+	defer cs.Unlock()
 	delete(cs.data, id)
-	cs.Unlock()
 	return nil
 }
 
