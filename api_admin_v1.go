@@ -29,7 +29,7 @@ func upateOrCreateConsumerEndpoint(c *napnap.Context) {
 	if consumer == nil {
 		// create consumer
 		target.ID = uuid.NewV4().String()
-		err = _consumerRepo.Create(&target)
+		err = _consumerRepo.Insert(&target)
 		if err != nil {
 			panic(err)
 		}
@@ -105,23 +105,30 @@ func getTokenEndpoint(c *napnap.Context) {
 }
 
 func createTokenEndpoint(c *napnap.Context) {
-	var token Token
-	err := c.BindJSON(&token)
+	var target Token
+	err := c.BindJSON(&target)
 	if err != nil {
 		panic(err)
 	}
 
-	if len(token.ConsumerID) == 0 {
+	if len(target.ConsumerID) == 0 {
 		panic(AppError{ErrorCode: "INVALID_DATA", Message: "consumer id was invalid."})
 	}
 
-	consumer := _consumerRepo.Get(token.ConsumerID)
+	consumer := _consumerRepo.Get(target.ConsumerID)
 	if consumer == nil {
 		panic(AppError{ErrorCode: "NOT_FOUND", Message: "consumer was not found"})
 	}
 
-	newToken := newToken(token.ConsumerID)
-	err = _tokenRepo.Insert(newToken)
+	if len(target.Key) == 0 {
+		target.Key = uuid.NewV4().String()
+	}
+
+	if target.Expiration.IsZero() {
+		_logger.debug("expiration is empty.")
+	}
+
+	err = _tokenRepo.Insert(&target)
 	if err != nil {
 		panic(err)
 	}

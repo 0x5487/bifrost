@@ -21,7 +21,7 @@ type Consumer struct {
 type ConsumerRepository interface {
 	Get(id string) *Consumer
 	GetByUsername(app string, username string) *Consumer
-	Create(consumer *Consumer) error
+	Insert(consumer *Consumer) error
 	Update(consumer *Consumer) error
 	Delete(id string) error
 	Count() int
@@ -32,20 +32,20 @@ type ConsumerMemStore struct {
 	data map[string]*Consumer
 }
 
-func newConsumerMemStore() ConsumerMemStore {
-	return ConsumerMemStore{
+func newConsumerMemStore() *ConsumerMemStore {
+	return &ConsumerMemStore{
 		data: map[string]*Consumer{},
 	}
 }
 
-func (cs ConsumerMemStore) Get(id string) *Consumer {
+func (cs *ConsumerMemStore) Get(id string) *Consumer {
 	cs.RLock()
 	defer cs.RUnlock()
 	result := cs.data[id]
 	return result
 }
 
-func (cs ConsumerMemStore) GetByUsername(app string, username string) *Consumer {
+func (cs *ConsumerMemStore) GetByUsername(app string, username string) *Consumer {
 	cs.RLock()
 	defer cs.RUnlock()
 	var result *Consumer
@@ -57,7 +57,7 @@ func (cs ConsumerMemStore) GetByUsername(app string, username string) *Consumer 
 	return result
 }
 
-func (cs ConsumerMemStore) Create(consumer *Consumer) error {
+func (cs *ConsumerMemStore) Insert(consumer *Consumer) error {
 	if len(consumer.App) == 0 {
 		return AppError{ErrorCode: "INVALID_DATA", Message: "consumer app filed was invalid."}
 	}
@@ -71,7 +71,7 @@ func (cs ConsumerMemStore) Create(consumer *Consumer) error {
 	return nil
 }
 
-func (cs ConsumerMemStore) Update(consumer *Consumer) error {
+func (cs *ConsumerMemStore) Update(consumer *Consumer) error {
 	if len(consumer.ID) == 0 {
 		return AppError{ErrorCode: "INVALID_DATA", Message: "consumer app filed was invalid."}
 	}
@@ -83,14 +83,14 @@ func (cs ConsumerMemStore) Update(consumer *Consumer) error {
 	return nil
 }
 
-func (cs ConsumerMemStore) Delete(id string) error {
+func (cs *ConsumerMemStore) Delete(id string) error {
 	cs.Lock()
 	delete(cs.data, id)
 	cs.Unlock()
 	return nil
 }
 
-func (cs ConsumerMemStore) Count() int {
+func (cs *ConsumerMemStore) Count() int {
 	cs.RLock()
 	defer cs.RUnlock()
 	return len(cs.data)

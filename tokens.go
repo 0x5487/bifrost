@@ -44,19 +44,19 @@ type TokenMemStore struct {
 	data map[string]*Token
 }
 
-func newTokenMemStore() TokenMemStore {
-	return TokenMemStore{
+func newTokenMemStore() *TokenMemStore {
+	return &TokenMemStore{
 		data: map[string]*Token{},
 	}
 }
 
-func (ts TokenMemStore) Get(key string) *Token {
+func (ts *TokenMemStore) Get(key string) *Token {
 	ts.RLock()
 	defer ts.RLock()
 	return ts.data[key]
 }
 
-func (ts TokenMemStore) GetByConsumerID(consumerID string) []*Token {
+func (ts *TokenMemStore) GetByConsumerID(consumerID string) []*Token {
 	var result []*Token
 	ts.RLock()
 	defer ts.RLock()
@@ -68,21 +68,25 @@ func (ts TokenMemStore) GetByConsumerID(consumerID string) []*Token {
 	return result
 }
 
-func (ts TokenMemStore) Insert(token *Token) error {
+func (ts *TokenMemStore) Insert(token *Token) error {
 	ts.Lock()
+	oldToken := ts.data[token.Key]
+	if oldToken != nil {
+		return AppError{ErrorCode: "INVALID_DATA", Message: "The token key already exits."}
+	}
 	ts.data[token.Key] = token
 	ts.Unlock()
 	return nil
 }
 
-func (ts TokenMemStore) Delete(key string) error {
+func (ts *TokenMemStore) Delete(key string) error {
 	ts.Lock()
 	delete(ts.data, key)
 	ts.Unlock()
 	return nil
 }
 
-func (ts TokenMemStore) DeleteByConsumerID(consumerID string) error {
+func (ts *TokenMemStore) DeleteByConsumerID(consumerID string) error {
 	ts.Lock()
 	for _, token := range ts.data {
 		if token.ConsumerID == consumerID {
