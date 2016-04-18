@@ -66,13 +66,20 @@ func (a Api) isAllow(consumer Consumer) bool {
 	return true
 }
 
+type TokenSetting struct {
+	Timeout int
+}
+
 type Configuration struct {
 	Debug            bool     `yaml:"debug"`
 	Binds            []string `yaml:"binds"`
 	AdminTokens      []string `yaml:"admin_tokens"`
 	ForwardRequestIP bool     `yaml:"forward_request_ip"`
 	ForwardRequestID bool     `yaml:"forward_requst_id"`
-	Cors             struct {
+	Data             struct {
+		Type string
+	}
+	Cors struct {
 		Enable         bool     `yaml:"enable"`
 		AllowedOrigins []string `yaml:"allowed_origins"`
 	}
@@ -95,8 +102,4 @@ func newConfiguration() Configuration {
 func (c Configuration) isValid() error {
 	// TODO: need to implement the features
 	return nil
-}
-
-type TokenSetting struct {
-	Timeout int
 }

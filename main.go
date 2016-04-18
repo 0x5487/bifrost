@@ -125,10 +125,10 @@ func main() {
 	adminRouter.Get("/status", getStatus)
 
 	// consumer api
-	adminRouter.Put("/v1/consumers", upateOrCreateConsumerEndpoint)
 	adminRouter.Get("/v1/consumers/count", getConsumerCountEndpoint)
 	adminRouter.Get("/v1/consumers/:consumer_id", getConsumerEndpoint)
 	adminRouter.Delete("/v1/consumers/:consumer_id", deletedConsumerEndpoint)
+	adminRouter.Put("/v1/consumers", upateOrCreateConsumerEndpoint)
 
 	// token api
 	adminRouter.Get("/v1/tokens/:key", getTokenEndpoint)
@@ -142,8 +142,7 @@ func main() {
 	// run two http servers on different ports
 	// one is for bifrost service and another is for admin api
 	wg := &sync.WaitGroup{}
-
-	wg.Add(1)
+	wg.Add(2)
 	go func() {
 		// http server for admin api
 		err := adminNap.Run(":8001")
@@ -152,8 +151,6 @@ func main() {
 		}
 		wg.Done()
 	}()
-
-	wg.Add(1)
 	go func() {
 		// http server for bifrost service
 		err := nap.RunAll(_config.Binds)

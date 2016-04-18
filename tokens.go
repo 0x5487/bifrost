@@ -24,7 +24,9 @@ func newToken(consumerID string) *Token {
 	}
 }
 
-func (t Token) isValid() bool {
+func (t *Token) isValid() bool {
+	_logger.debug("exp")
+	_logger.debug(t.Expiration)
 	if time.Now().UTC().After(t.Expiration) {
 		return false
 	}
