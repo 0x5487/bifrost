@@ -49,6 +49,7 @@ func (p *Proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	var api *Api
 	requestHost := c.Request.URL.Host
 	requestPath := c.Request.URL.Path
+	consumer := c.Get("consumer").(Consumer)
 
 	// find api entry which match the request.
 	for _, apiEntry := range _config.Apis {
@@ -65,7 +66,6 @@ func (p *Proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 		}
 
 		// ensure the consumer has access permission
-		consumer := c.Get("_consumer").(Consumer)
 		if apiEntry.isAllow(consumer) == false {
 			c.Writer.WriteHeader(403)
 			return
@@ -80,7 +80,7 @@ func (p *Proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 		next(c)
 	}
 
-	_logger.debugf("api host: %s ", api.RequestHost)
+	_logger.debugf("api host: %s", api.RequestHost)
 	_logger.debugf("api path: %s", api.RequestPath)
 
 	// exchange url
@@ -123,6 +123,13 @@ func (p *Proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	if _config.ForwardRequestID {
 		requestID := c.Get("request_id").(string)
 		outReq.Header.Set("X-Request-Id", requestID)
+	}
+
+	// forward consumer information
+	if len(consumer.ID) > 0 {
+		outReq.Header.Set("X-Consumer-Id", consumer.ID)
+		outReq.Header.Set("X-Consumer-Username", consumer.Username)
+		outReq.Header.Set("X-Consumer-Custom-Id", consumer.CustomID)
 	}
 
 	// send to target

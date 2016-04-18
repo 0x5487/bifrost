@@ -35,6 +35,6 @@ func identity(c *napnap.Context, next napnap.HandlerFunc) {
 		}
 	}
 
-	c.Set("_consumer", consumer)
+	c.Set("consumer", consumer)
 	next(c)
 }
