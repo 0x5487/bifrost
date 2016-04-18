@@ -118,10 +118,9 @@ func main() {
 	adminNap.Use(napnap.NewHealth())
 	adminNap.Use(newApplicationMiddleware())
 	adminNap.UseFunc(requestIDMiddleware())
+	adminNap.UseFunc(auth) // verify all request which send to admin api and ensure the caller has valid admin token.
 
-	// verify all request which send to admin api and ensure the caller has valid admin token.
 	adminRouter := napnap.NewRouter()
-	adminRouter.All("/", authEndpoint)
 	adminRouter.Get("/status", getStatus)
 
 	// consumer api

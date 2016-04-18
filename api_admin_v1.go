@@ -7,10 +7,6 @@ import (
 	"github.com/satori/go.uuid"
 )
 
-func authEndpoint(c *napnap.Context) {
-
-}
-
 func upateOrCreateConsumerEndpoint(c *napnap.Context) {
 	var target Consumer
 	err := c.BindJSON(&target)
