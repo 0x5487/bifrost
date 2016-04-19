@@ -131,12 +131,20 @@ func (p *Proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	// forward consumer information
 	if len(consumer.ID) > 0 {
 		outReq.Header.Set("X-Consumer-Id", consumer.ID)
-		outReq.Header.Set("X-Consumer-Username", consumer.Username)
-		outReq.Header.Set("X-Consumer-Custom-Id", consumer.CustomID)
-
+		if len(consumer.App) > 0 {
+			outReq.Header.Set("X-Consumer-App", consumer.App)
+		}
+		if len(consumer.Username) > 0 {
+			outReq.Header.Set("X-Consumer-Username", consumer.Username)
+		}
+		if len(consumer.CustomID) > 0 {
+			outReq.Header.Set("X-Consumer-Custom-Id", consumer.CustomID)
+		}
 		if len(consumer.CustomFields) > 0 {
 			for key, field := range consumer.CustomFields {
-				outReq.Header.Set("X-Consumer-"+key, field)
+				if len(key) > 0 && len(field) > 0 {
+					outReq.Header.Set("X-Consumer-"+key, field)
+				}
 			}
 		}
 	}
