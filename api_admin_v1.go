@@ -167,7 +167,25 @@ func deleteTokenEndpoint(c *napnap.Context) {
 		panic(err)
 	}
 
-	c.JSON(204, nil)
+	c.Status(204)
+}
+
+func deleteTokensEndpoint(c *napnap.Context) {
+	consumerId := c.Query("consumer_id")
+	var tokens []*Token
+
+	if len(consumerId) > 0 {
+		// get all tokens by consumer id
+		tokens = _tokenRepo.GetByConsumerID(consumerId)
+	}
+
+	if len(tokens) == 0 {
+		panic(AppError{ErrorCode: "NOT_FOUND", Message: "tokens were not found"})
+	}
+
+	// delete all token by consumer id
+	_tokenRepo.DeleteByConsumerID(consumerId)
+	c.Status(204)
 }
 
 func getStatus(c *napnap.Context) {

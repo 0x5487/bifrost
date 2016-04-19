@@ -131,9 +131,10 @@ func main() {
 
 	// token api
 	adminRouter.Get("/v1/tokens/:key", getTokenEndpoint)
-	adminRouter.Get("/v1/tokens", getTokensEndpoint)
 	adminRouter.Delete("/v1/tokens/:key", deleteTokenEndpoint)
+	adminRouter.Get("/v1/tokens", getTokensEndpoint)
 	adminRouter.Post("/v1/tokens", createTokenEndpoint)
+	adminRouter.Delete("/v1/tokens", deleteTokensEndpoint)
 
 	adminNap.Use(adminRouter)
 	adminNap.UseFunc(notFound)
