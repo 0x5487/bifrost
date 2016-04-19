@@ -65,7 +65,11 @@ func (p *Proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 		}
 		// ensure the consumer has access permission
 		if apiEntry.isAllow(consumer) == false {
-			c.Writer.WriteHeader(403)
+			if consumer.isAuthenticated() {
+				c.Status(403)
+				return
+			}
+			c.Status(401)
 			return
 		}
 		api = &apiEntry

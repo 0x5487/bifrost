@@ -18,6 +18,13 @@ type Consumer struct {
 	CreatedAt    time.Time         `json:"created_at"`
 }
 
+func (c *Consumer) isAuthenticated() bool {
+	if len(c.ID) > 0 {
+		return true
+	}
+	return false
+}
+
 type ConsumerRepository interface {
 	Get(id string) *Consumer
 	GetByUsername(app string, username string) *Consumer
