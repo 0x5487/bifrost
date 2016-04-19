@@ -104,9 +104,12 @@ func getTokenEndpoint(c *napnap.Context) {
 
 func getTokensEndpoint(c *napnap.Context) {
 	consumerId := c.Query("consumer_id")
-
 	if len(consumerId) > 0 {
 		result := _tokenRepo.GetByConsumerID(consumerId)
+		if result == nil {
+			c.JSON(200, []Token{})
+			return
+		}
 		c.JSON(200, result)
 		return
 	}
