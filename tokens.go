@@ -9,6 +9,7 @@ import (
 
 type Token struct {
 	Key        string    `json:"key"`
+	Source     string    `json:"source"`
 	ConsumerID string    `json:"consumer_id"`
 	Expiration time.Time `json:"expiration"`
 	CreatedAt  time.Time `json:"created_at"`
