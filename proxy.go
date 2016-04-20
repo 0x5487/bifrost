@@ -78,7 +78,8 @@ func (p *Proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 
 	// none of api enties are match
 	if api == nil {
-		next(c)
+		next(c) // go to notFound middleware
+		return
 	}
 
 	_logger.debugf("api host: %s", api.RequestHost)
