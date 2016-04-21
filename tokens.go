@@ -21,7 +21,7 @@ func newToken(consumerID string) *Token {
 	return &Token{
 		ConsumerID: consumerID,
 		Key:        uuid.NewV4().String(),
-		Expiration: now.Add(time.Duration(10) * time.Minute),
+		Expiration: now.Add(time.Duration(_config.Token.Timeout) * time.Minute),
 		CreatedAt:  now,
 	}
 }
@@ -33,10 +33,15 @@ func (t *Token) isValid() bool {
 	return true
 }
 
+func (t *Token) renew() {
+	t.Expiration = time.Now().UTC().Add(time.Duration(_config.Token.Timeout) * time.Minute)
+}
+
 type TokenRepository interface {
 	Get(key string) *Token
 	GetByConsumerID(consumerID string) []*Token
 	Insert(token *Token) error
+	Update(token *Token) error
 	DeleteByConsumerID(consumerID string) error
 	Delete(key string) error
 }
@@ -79,6 +84,17 @@ func (ts *TokenMemStore) Insert(token *Token) error {
 		return AppError{ErrorCode: "INVALID_DATA", Message: "The token key already exits."}
 	}
 	token.CreatedAt = time.Now().UTC()
+	ts.data[token.Key] = token
+	return nil
+}
+
+func (ts *TokenMemStore) Update(token *Token) error {
+	ts.Lock()
+	defer ts.Unlock()
+	oldToken := ts.data[token.Key]
+	if oldToken == nil {
+		return AppError{ErrorCode: "INVALID_DATA", Message: "The token was not found."}
+	}
 	ts.data[token.Key] = token
 	return nil
 }

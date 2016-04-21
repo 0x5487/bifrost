@@ -56,6 +56,12 @@ func identity(c *napnap.Context, next napnap.HandlerFunc) {
 		return
 	}
 
+	// extend token's life
+	if _config.Token.SlidingExpiration {
+		token.renew()
+		_tokenRepo.Update(token)
+	}
+
 	consumer = *(target)
 	_logger.debugf("consumer id: %v", consumer.ID)
 	c.Set("consumer", consumer)
