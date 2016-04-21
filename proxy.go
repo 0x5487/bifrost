@@ -40,6 +40,10 @@ func NewProxy() *Proxy {
 
 		// custom
 		"Content-Length",
+		"Access-Control-Allow-Origin",
+		"Access-Control-Allow-Headers",
+		"Access-Control-Allow-Methods",
+		"Cache-Control",
 	}
 	return p
 }
@@ -167,10 +171,11 @@ func (p *Proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	defer respClose(resp.Body)
 
 	// copy the response header
-	p.copyHeader(c.Writer.Header(), resp.Header)
-	for _, h := range p.hopHeaders {
-		c.Writer.Header().Del(h)
-	}
+	/*
+		p.copyHeader(c.Writer.Header(), resp.Header)
+		for _, h := range p.hopHeaders {
+			c.Writer.Header().Del(h)
+		}*/
 
 	// write body
 	body, _ = ioutil.ReadAll(resp.Body)

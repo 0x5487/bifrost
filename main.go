@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/jasonsoft/napnap"
@@ -106,6 +107,9 @@ func main() {
 	if cors.Enable {
 		options := napnap.Options{}
 		options.AllowedOrigins = cors.AllowedOrigins
+		options.AllowedMethods = []string{"GET", "POST", "PUT", "DELETE"}
+		options.AllowedHeaders = []string{"*"}
+		_logger.debugf("cors: %v", strings.Join(options.AllowedOrigins[:], ","))
 		nap.Use(napnap.NewCors(options))
 	}
 
