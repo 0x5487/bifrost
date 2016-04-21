@@ -9,31 +9,55 @@ func identity(c *napnap.Context, next napnap.HandlerFunc) {
 	if len(key) == 0 {
 		consumer = Consumer{}
 		_logger.debug("no key")
-	} else {
-		token := _tokenRepo.Get(key)
-		if token == nil {
-			consumer = Consumer{}
-			_logger.debug("key was not found")
-		} else {
-			if token.isValid() == false {
-				err := _tokenRepo.Delete(token.Key)
-				if err != nil {
-					panic(err)
-				}
-				consumer = Consumer{}
-				_logger.debug("key was invalid")
-			}
+		c.Set("consumer", consumer)
+		next(c)
+		return
+	}
 
-			target := _consumerRepo.Get(token.ConsumerID)
-			if target == nil {
-				consumer = Consumer{}
-				_logger.debug("consumer was not found")
-			} else {
-				consumer = *(target)
-				_logger.debugf("consumer id: %v", consumer.ID)
-			}
+	token := _tokenRepo.Get(key)
+	if token == nil {
+		consumer = Consumer{}
+		_logger.debug("key was not found")
+		c.Set("consumer", consumer)
+		next(c)
+		return
+	}
+
+	if token.isValid() == false {
+		err := _tokenRepo.Delete(token.Key)
+		if err != nil {
+			panic(err)
+		}
+		consumer = Consumer{}
+		_logger.debug("key has expired")
+		c.Set("consumer", consumer)
+		next(c)
+		return
+	}
+
+	if _config.Token.VerifyIP {
+		clientIP := c.RemoteIpAddress()
+		_logger.debugf("consumer ip: %v", clientIP)
+		if contains(token.IPAddress, clientIP) == false && contains(token.IPAddress, "0.0.0.0") == false {
+			consumer = Consumer{}
+			_logger.debug("token didn't match client ip")
+			c.Set("consumer", consumer)
+			next(c)
+			return
 		}
 	}
+
+	target := _consumerRepo.Get(token.ConsumerID)
+	if target == nil {
+		consumer = Consumer{}
+		_logger.debug("consumer was not found")
+		c.Set("consumer", consumer)
+		next(c)
+		return
+	}
+
+	consumer = *(target)
+	_logger.debugf("consumer id: %v", consumer.ID)
 	c.Set("consumer", consumer)
 	next(c)
 }

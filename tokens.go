@@ -11,6 +11,7 @@ type Token struct {
 	Key        string    `json:"key"`
 	Source     string    `json:"source"`
 	ConsumerID string    `json:"consumer_id"`
+	IPAddress  []string  `json:"ip_addresses"`
 	Expiration time.Time `json:"expiration"`
 	CreatedAt  time.Time `json:"created_at"`
 }
@@ -26,8 +27,6 @@ func newToken(consumerID string) *Token {
 }
 
 func (t *Token) isValid() bool {
-	_logger.debug("exp")
-	_logger.debug(t.Expiration)
 	if time.Now().UTC().After(t.Expiration) {
 		return false
 	}

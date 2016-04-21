@@ -14,3 +14,12 @@ func respClose(body io.ReadCloser) error {
 	}
 	return body.Close()
 }
+
+func contains(s []string, str string) bool {
+	for _, a := range s {
+		if a == str {
+			return true
+		}
+	}
+	return false
+}

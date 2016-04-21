@@ -67,7 +67,9 @@ func (a Api) isAllow(consumer Consumer) bool {
 }
 
 type TokenSetting struct {
-	Timeout int
+	Timeout           int  `yaml:"timeout"`
+	VerifyIP          bool `yaml:"verify_ip"`
+	SlidingExpiration bool `yaml:"sliding_expiration"`
 }
 
 type Configuration struct {
