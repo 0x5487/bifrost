@@ -155,9 +155,12 @@ func createTokenEndpoint(c *napnap.Context) {
 
 func updateTokensEndpoint(c *napnap.Context) {
 	var tokens []Token
-	c.BindJSON(tokens)
-
+	err := c.BindJSON(&tokens)
+	if err != nil {
+		panic(AppError{ErrorCode: "INVALID_DATA", Message: err.Error()})
+	}
 	if len(tokens) == 0 {
+		c.Status(204)
 		return
 	}
 	for _, token := range tokens {
