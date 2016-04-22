@@ -153,6 +153,19 @@ func createTokenEndpoint(c *napnap.Context) {
 	c.JSON(201, target)
 }
 
+func updateTokensEndpoint(c *napnap.Context) {
+	var tokens []Token
+	c.BindJSON(tokens)
+
+	if len(tokens) == 0 {
+		return
+	}
+	for _, token := range tokens {
+		_tokenRepo.Update(&token)
+	}
+	c.Status(204)
+}
+
 func deleteTokenEndpoint(c *napnap.Context) {
 	key := c.Param("key")
 

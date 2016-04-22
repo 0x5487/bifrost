@@ -138,6 +138,7 @@ func main() {
 	adminRouter.Delete("/v1/tokens/:key", deleteTokenEndpoint)
 	adminRouter.Get("/v1/tokens", getTokensEndpoint)
 	adminRouter.Post("/v1/tokens", createTokenEndpoint)
+	adminRouter.Put("/v1/tokens", updateTokensEndpoint)
 	adminRouter.Delete("/v1/tokens", deleteTokensEndpoint)
 
 	adminNap.Use(adminRouter)
