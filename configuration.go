@@ -72,16 +72,19 @@ type TokenSetting struct {
 	SlidingExpiration bool `yaml:"sliding_expiration"`
 }
 
+type DataSetting struct {
+	Type             string
+	ConnectionString string `yaml:"connection_string"`
+}
+
 type Configuration struct {
 	Debug            bool     `yaml:"debug"`
 	Binds            []string `yaml:"binds"`
 	AdminTokens      []string `yaml:"admin_tokens"`
 	ForwardRequestIP bool     `yaml:"forward_request_ip"`
 	ForwardRequestID bool     `yaml:"forward_requst_id"`
-	Data             struct {
-		Type string
-	}
-	Cors struct {
+	Data             DataSetting
+	Cors             struct {
 		Enable         bool     `yaml:"enable"`
 		AllowedOrigins []string `yaml:"allowed_origins"`
 	}
@@ -95,6 +98,9 @@ type Configuration struct {
 func newConfiguration() Configuration {
 	return Configuration{
 		Binds: []string{":8080"},
+		Data: DataSetting{
+			Type: "memory",
+		},
 		Token: TokenSetting{
 			Timeout: 10,
 		},

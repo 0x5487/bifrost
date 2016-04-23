@@ -60,7 +60,14 @@ func init() {
 		_logger.mode = Debug
 	}
 
-	_consumerRepo = newConsumerMemStore()
+	// initial consumer and token storage
+	if _config.Data.Type == "memory" {
+		_consumerRepo = newConsumerMemStore()
+	}
+	if _config.Data.Type == "mongodb" {
+		_consumerRepo = newConsumerMongo(_config.Data.ConnectionString)
+	}
+
 	_tokenRepo = newTokenMemStore()
 }
 

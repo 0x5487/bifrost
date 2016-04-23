@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/satori/go.uuid"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type Consumer struct {
@@ -66,7 +68,7 @@ func (cs *ConsumerMemStore) GetByUsername(app string, username string) *Consumer
 
 func (cs *ConsumerMemStore) Insert(consumer *Consumer) error {
 	if len(consumer.App) == 0 {
-		return AppError{ErrorCode: "INVALID_DATA", Message: "consumer app filed was invalid."}
+		return AppError{ErrorCode: "INVALID_DATA", Message: "app filed was invalid."}
 	}
 	consumer.ID = uuid.NewV4().String()
 	now := time.Now().UTC()
@@ -80,7 +82,7 @@ func (cs *ConsumerMemStore) Insert(consumer *Consumer) error {
 
 func (cs *ConsumerMemStore) Update(consumer *Consumer) error {
 	if len(consumer.ID) == 0 {
-		return AppError{ErrorCode: "INVALID_DATA", Message: "consumer app filed was invalid."}
+		return AppError{ErrorCode: "INVALID_DATA", Message: "app filed was invalid."}
 	}
 	now := time.Now()
 	consumer.UpdatedAt = now
@@ -101,4 +103,134 @@ func (cs *ConsumerMemStore) Count() int {
 	cs.RLock()
 	defer cs.RUnlock()
 	return len(cs.data)
+}
+
+type consumerMongo struct {
+	connectionString string
+}
+
+func newConsumerMongo(connectionString string) *consumerMongo {
+	return &consumerMongo{
+		connectionString: connectionString,
+	}
+}
+
+func (cm *consumerMongo) newSession() (*mgo.Session, error) {
+	return mgo.Dial(cm.connectionString)
+}
+
+func (cm *consumerMongo) Get(id string) *Consumer {
+	session, err := cm.newSession()
+	if err != nil {
+		panic(err)
+	}
+	defer session.Close()
+
+	c := session.DB("bifrost").C("consumers")
+	consumer := Consumer{}
+	err = c.Find(bson.M{"id": id}).One(&consumer)
+	if err != nil {
+		if err.Error() == "not found" {
+			return nil
+		}
+		panic(err)
+	}
+	return &consumer
+}
+
+func (cm *consumerMongo) GetByUsername(app string, username string) *Consumer {
+	session, err := cm.newSession()
+	if err != nil {
+		panic(err)
+	}
+	defer session.Close()
+
+	c := session.DB("bifrost").C("consumers")
+	consumer := Consumer{}
+	err = c.Find(bson.M{"app": app, "username": username}).One(&consumer)
+	if err != nil {
+		if err.Error() == "not found" {
+			return nil
+		}
+		panic(err)
+	}
+	return &consumer
+}
+
+func (cm *consumerMongo) Insert(consumer *Consumer) error {
+	if len(consumer.App) == 0 {
+		_logger.debugf("mongo insert:", consumer.App)
+		return AppError{ErrorCode: "INVALID_DATA", Message: "app filed was invalid."}
+	}
+	consumer.ID = uuid.NewV4().String()
+	now := time.Now().UTC()
+	consumer.CreatedAt = now
+	consumer.UpdatedAt = now
+
+	session, err := cm.newSession()
+	if err != nil {
+		panic(err)
+	}
+	defer session.Close()
+
+	c := session.DB("bifrost").C("consumers")
+	err = c.Insert(consumer)
+	if err != nil {
+		panic(err)
+	}
+	return nil
+}
+
+func (cm *consumerMongo) Update(consumer *Consumer) error {
+	if len(consumer.ID) == 0 {
+		_logger.debugf("mongo update:", consumer.ID)
+		return AppError{ErrorCode: "INVALID_DATA", Message: "app filed was invalid."}
+	}
+	now := time.Now()
+	consumer.UpdatedAt = now
+
+	session, err := cm.newSession()
+	if err != nil {
+		panic(err)
+	}
+	defer session.Close()
+
+	c := session.DB("bifrost").C("consumers")
+	colQuerier := bson.M{"id": consumer.ID}
+	err = c.Update(colQuerier, consumer)
+	if err != nil {
+		panic(err)
+	}
+	return nil
+}
+
+func (cm *consumerMongo) Delete(id string) error {
+	session, err := cm.newSession()
+	if err != nil {
+		panic(err)
+	}
+	defer session.Close()
+
+	c := session.DB("bifrost").C("consumers")
+	colQuerier := bson.M{"id": id}
+	err = c.Remove(colQuerier)
+	if err != nil {
+		panic(err)
+	}
+	return nil
+}
+
+func (cm *consumerMongo) Count() int {
+	session, err := cm.newSession()
+	if err != nil {
+		panic(err)
+	}
+	defer session.Close()
+
+	c := session.DB("bifrost").C("consumers")
+	count, err := c.Count()
+	if err != nil {
+		panic(err)
+	}
+	return count
 }

@@ -15,11 +15,11 @@ func upateOrCreateConsumerEndpoint(c *napnap.Context) {
 	}
 
 	if len(target.Username) == 0 {
-		panic(AppError{ErrorCode: "INVALID_DATA", Message: "username is invalid."})
+		panic(AppError{ErrorCode: "INVALID_DATA", Message: "username field is invalid."})
 	}
 
 	if len(target.App) == 0 {
-		panic(AppError{ErrorCode: "INVALID_DATA", Message: "app is invalid."})
+		panic(AppError{ErrorCode: "INVALID_DATA", Message: "app field is invalid."})
 	}
 
 	consumer := _consumerRepo.GetByUsername(target.App, target.Username)

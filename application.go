@@ -45,8 +45,8 @@ func (m ApplicationMiddleware) Invoke(c *napnap.Context, next napnap.HandlerFunc
 				return
 			}
 
-			// unknow error
-			_logger.debug(err)
+			// unknown error
+			_logger.debugf("unknown error: %v", err)
 			appError = AppError{
 				ErrorCode: "UNKNOWN_ERROR",
 				Message:   "An unknown error has occurred.",
