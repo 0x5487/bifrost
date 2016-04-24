@@ -61,8 +61,12 @@ func getConsumerEndpoint(c *napnap.Context) {
 }
 
 func getConsumerCountEndpoint(c *napnap.Context) {
+	count, err := _consumerRepo.Count()
+	if err != nil {
+		panic(err)
+	}
 	result := ApiCount{
-		Count: _consumerRepo.Count(),
+		Count: count,
 	}
 	c.JSON(200, result)
 }
@@ -83,7 +87,6 @@ func deletedConsumerEndpoint(c *napnap.Context) {
 	if err != nil {
 		panic(err)
 	}
-
 	c.JSON(204, nil)
 }
 

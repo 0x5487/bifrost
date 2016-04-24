@@ -63,12 +63,12 @@ func init() {
 	// initial consumer and token storage
 	if _config.Data.Type == "memory" {
 		_consumerRepo = newConsumerMemStore()
+		_tokenRepo = newTokenMemStore()
 	}
 	if _config.Data.Type == "mongodb" {
 		_consumerRepo = newConsumerMongo(_config.Data.ConnectionString)
+		_tokenRepo = newTokenMongo(_config.Data.ConnectionString)
 	}
-
-	_tokenRepo = newTokenMemStore()
 }
 
 func main() {

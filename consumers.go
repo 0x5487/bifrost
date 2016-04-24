@@ -10,14 +10,14 @@ import (
 )
 
 type Consumer struct {
-	ID           string            `json:"id"`
-	App          string            `json:"app"`
-	Groups       []string          `json:"groups"`
-	Username     string            `json:"username"`
-	CustomID     string            `json:"custom_id"`
-	CustomFields map[string]string `json:"custom_fields"`
-	UpdatedAt    time.Time         `json:"updated_at"`
-	CreatedAt    time.Time         `json:"created_at"`
+	ID           string            `json:"id" bson:"id"`
+	App          string            `json:"app" bson:"app"`
+	Groups       []string          `json:"groups" bson:"groups"`
+	Username     string            `json:"username" bson:"username"`
+	CustomID     string            `json:"custom_id" bson:"custom_id"`
+	CustomFields map[string]string `json:"custom_fields" bson:"custom_fields"`
+	UpdatedAt    time.Time         `json:"updated_at" bson:"updated_at"`
+	CreatedAt    time.Time         `json:"created_at" bson:"created_at"`
 }
 
 func (c *Consumer) isAuthenticated() bool {
@@ -33,7 +33,7 @@ type ConsumerRepository interface {
 	Insert(consumer *Consumer) error
 	Update(consumer *Consumer) error
 	Delete(id string) error
-	Count() int
+	Count() (int, error)
 }
 
 type ConsumerMemStore struct {
@@ -99,10 +99,10 @@ func (cs *ConsumerMemStore) Delete(id string) error {
 	return nil
 }
 
-func (cs *ConsumerMemStore) Count() int {
+func (cs *ConsumerMemStore) Count() (int, error) {
 	cs.RLock()
 	defer cs.RUnlock()
-	return len(cs.data)
+	return len(cs.data), nil
 }
 
 type consumerMongo struct {
@@ -159,7 +159,6 @@ func (cm *consumerMongo) GetByUsername(app string, username string) *Consumer {
 
 func (cm *consumerMongo) Insert(consumer *Consumer) error {
 	if len(consumer.App) == 0 {
-		_logger.debugf("mongo insert:", consumer.App)
 		return AppError{ErrorCode: "INVALID_DATA", Message: "app filed was invalid."}
 	}
 	consumer.ID = uuid.NewV4().String()
@@ -169,21 +168,20 @@ func (cm *consumerMongo) Insert(consumer *Consumer) error {
 
 	session, err := cm.newSession()
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer session.Close()
 
 	c := session.DB("bifrost").C("consumers")
 	err = c.Insert(consumer)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	return nil
 }
 
 func (cm *consumerMongo) Update(consumer *Consumer) error {
 	if len(consumer.ID) == 0 {
-		_logger.debugf("mongo update:", consumer.ID)
 		return AppError{ErrorCode: "INVALID_DATA", Message: "app filed was invalid."}
 	}
 	now := time.Now()
@@ -191,7 +189,7 @@ func (cm *consumerMongo) Update(consumer *Consumer) error {
 
 	session, err := cm.newSession()
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer session.Close()
 
@@ -199,7 +197,7 @@ func (cm *consumerMongo) Update(consumer *Consumer) error {
 	colQuerier := bson.M{"id": consumer.ID}
 	err = c.Update(colQuerier, consumer)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	return nil
 }
@@ -207,7 +205,7 @@ func (cm *consumerMongo) Update(consumer *Consumer) error {
 func (cm *consumerMongo) Delete(id string) error {
 	session, err := cm.newSession()
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer session.Close()
 
@@ -215,22 +213,22 @@ func (cm *consumerMongo) Delete(id string) error {
 	colQuerier := bson.M{"id": id}
 	err = c.Remove(colQuerier)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	return nil
 }
 
-func (cm *consumerMongo) Count() int {
+func (cm *consumerMongo) Count() (int, error) {
 	session, err := cm.newSession()
 	if err != nil {
-		panic(err)
+		return 0, err
 	}
 	defer session.Close()
 
 	c := session.DB("bifrost").C("consumers")
 	count, err := c.Count()
 	if err != nil {
-		panic(err)
+		return 0, err
 	}
-	return count
+	return count, nil
 }
