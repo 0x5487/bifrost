@@ -14,7 +14,10 @@ func identity(c *napnap.Context, next napnap.HandlerFunc) {
 		return
 	}
 
-	token := _tokenRepo.Get(key)
+	token, err := _tokenRepo.Get(key)
+	if err != nil {
+		panic(err)
+	}
 	if token == nil {
 		consumer = Consumer{}
 		_logger.debug("key was not found")
@@ -47,7 +50,10 @@ func identity(c *napnap.Context, next napnap.HandlerFunc) {
 		}
 	}
 
-	target := _consumerRepo.Get(token.ConsumerID)
+	target, err := _consumerRepo.Get(token.ConsumerID)
+	if err != nil {
+		panic(err)
+	}
 	if target == nil {
 		consumer = Consumer{}
 		_logger.debug("consumer was not found")

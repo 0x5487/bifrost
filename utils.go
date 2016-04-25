@@ -23,3 +23,9 @@ func contains(s []string, str string) bool {
 	}
 	return false
 }
+
+func panicIf(err error) {
+	if err != nil {
+		panic(err)
+	}
+}

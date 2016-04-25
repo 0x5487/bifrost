@@ -11,7 +11,7 @@ import (
 )
 
 type Consumer struct {
-	ID           string            `json:"id" bson:"id"`
+	ID           string            `json:"id" bson:"_id"`
 	App          string            `json:"app" bson:"app"`
 	Groups       []string          `json:"groups" bson:"groups"`
 	Username     string            `json:"username" bson:"username"`
@@ -29,8 +29,8 @@ func (c *Consumer) isAuthenticated() bool {
 }
 
 type ConsumerRepository interface {
-	Get(id string) *Consumer
-	GetByUsername(app string, username string) *Consumer
+	Get(id string) (*Consumer, error)
+	GetByUsername(app string, username string) (*Consumer, error)
 	Insert(consumer *Consumer) error
 	Update(consumer *Consumer) error
 	Delete(id string) error
@@ -48,14 +48,14 @@ func newConsumerMemStore() *ConsumerMemStore {
 	}
 }
 
-func (cs *ConsumerMemStore) Get(id string) *Consumer {
+func (cs *ConsumerMemStore) Get(id string) (*Consumer, error) {
 	cs.RLock()
 	defer cs.RUnlock()
 	result := cs.data[id]
-	return result
+	return result, nil
 }
 
-func (cs *ConsumerMemStore) GetByUsername(app string, username string) *Consumer {
+func (cs *ConsumerMemStore) GetByUsername(app string, username string) (*Consumer, error) {
 	cs.RLock()
 	defer cs.RUnlock()
 	var result *Consumer
@@ -64,7 +64,7 @@ func (cs *ConsumerMemStore) GetByUsername(app string, username string) *Consumer
 			result = consumer
 		}
 	}
-	return result
+	return result, nil
 }
 
 func (cs *ConsumerMemStore) Insert(consumer *Consumer) error {
@@ -119,18 +119,6 @@ func newConsumerMongo(connectionString string) (*consumerMongo, error) {
 	c := session.DB("bifrost").C("consumers")
 
 	// create index
-	idIdx := mgo.Index{
-		Name:       "consumer_id_idx",
-		Key:        []string{"id"},
-		Unique:     true,
-		Background: true,
-		Sparse:     true,
-	}
-	err = c.EnsureIndex(idIdx)
-	if err != nil {
-		return nil, err
-	}
-
 	appUsernameIdx := mgo.Index{
 		Name:       "consumer_app_username_idx",
 		Key:        []string{"app", "username"},
@@ -152,29 +140,29 @@ func (cm *consumerMongo) newSession() (*mgo.Session, error) {
 	return mgo.Dial(cm.connectionString)
 }
 
-func (cm *consumerMongo) Get(id string) *Consumer {
+func (cm *consumerMongo) Get(id string) (*Consumer, error) {
 	session, err := cm.newSession()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	defer session.Close()
 
 	c := session.DB("bifrost").C("consumers")
 	consumer := Consumer{}
-	err = c.Find(bson.M{"id": id}).One(&consumer)
+	err = c.Find(bson.M{"_id": id}).One(&consumer)
 	if err != nil {
 		if err.Error() == "not found" {
-			return nil
+			return nil, nil
 		}
-		panic(err)
+		return nil, err
 	}
-	return &consumer
+	return &consumer, nil
 }
 
-func (cm *consumerMongo) GetByUsername(app string, username string) *Consumer {
+func (cm *consumerMongo) GetByUsername(app string, username string) (*Consumer, error) {
 	session, err := cm.newSession()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	defer session.Close()
 
@@ -183,11 +171,11 @@ func (cm *consumerMongo) GetByUsername(app string, username string) *Consumer {
 	err = c.Find(bson.M{"app": app, "username": username}).One(&consumer)
 	if err != nil {
 		if err.Error() == "not found" {
-			return nil
+			return nil, nil
 		}
-		panic(err)
+		return nil, err
 	}
-	return &consumer
+	return &consumer, nil
 }
 
 func (cm *consumerMongo) Insert(consumer *Consumer) error {
@@ -230,7 +218,7 @@ func (cm *consumerMongo) Update(consumer *Consumer) error {
 	defer session.Close()
 
 	c := session.DB("bifrost").C("consumers")
-	colQuerier := bson.M{"id": consumer.ID}
+	colQuerier := bson.M{"_id": consumer.ID}
 	err = c.Update(colQuerier, consumer)
 	if err != nil {
 		return err
@@ -246,7 +234,7 @@ func (cm *consumerMongo) Delete(id string) error {
 	defer session.Close()
 
 	c := session.DB("bifrost").C("consumers")
-	colQuerier := bson.M{"id": id}
+	colQuerier := bson.M{"_id": id}
 	err = c.Remove(colQuerier)
 	if err != nil {
 		return err

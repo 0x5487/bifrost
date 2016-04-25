@@ -12,7 +12,7 @@ import (
 )
 
 type Token struct {
-	Key         string    `json:"key" bson:"key"`
+	Key         string    `json:"key" bson:"_id"`
 	Source      string    `json:"source" bson:"source"`
 	ConsumerID  string    `json:"consumer_id" bson:"consumer_id"`
 	IPAddresses []string  `json:"ip_addresses" bson:"ip_addresses"`
@@ -42,8 +42,8 @@ func (t *Token) renew() {
 }
 
 type TokenRepository interface {
-	Get(key string) *Token
-	GetByConsumerID(consumerID string) []*Token
+	Get(key string) (*Token, error)
+	GetByConsumerID(consumerID string) ([]*Token, error)
 	Insert(token *Token) error
 	Update(token *Token) error
 	DeleteByConsumerID(consumerID string) error
@@ -61,14 +61,14 @@ func newTokenMemStore() *TokenMemStore {
 	}
 }
 
-func (ts *TokenMemStore) Get(key string) *Token {
+func (ts *TokenMemStore) Get(key string) (*Token, error) {
 	ts.RLock()
 	defer ts.RUnlock()
 	result := ts.data[key]
-	return result
+	return result, nil
 }
 
-func (ts *TokenMemStore) GetByConsumerID(consumerID string) []*Token {
+func (ts *TokenMemStore) GetByConsumerID(consumerID string) ([]*Token, error) {
 	var result []*Token
 	ts.RLock()
 	defer ts.RUnlock()
@@ -77,7 +77,7 @@ func (ts *TokenMemStore) GetByConsumerID(consumerID string) []*Token {
 			result = append(result, token)
 		}
 	}
-	return result
+	return result, nil
 }
 
 func (ts *TokenMemStore) Insert(token *Token) error {
@@ -134,18 +134,6 @@ func newTokenMongo(connectionString string) (*tokenMongo, error) {
 	c := session.DB("bifrost").C("tokens")
 
 	// create index
-	keyIdx := mgo.Index{
-		Name:       "token_key_idx",
-		Key:        []string{"key"},
-		Unique:     true,
-		Background: true,
-		Sparse:     true,
-	}
-	err = c.EnsureIndex(keyIdx)
-	if err != nil {
-		return nil, err
-	}
-
 	consumerIdx := mgo.Index{
 		Name:       "token_consumer_idx",
 		Key:        []string{"consumer_id"},
@@ -166,29 +154,29 @@ func (tm *tokenMongo) newSession() (*mgo.Session, error) {
 	return mgo.Dial(tm.connectionString)
 }
 
-func (tm *tokenMongo) Get(key string) *Token {
+func (tm *tokenMongo) Get(key string) (*Token, error) {
 	session, err := tm.newSession()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	defer session.Close()
 
 	c := session.DB("bifrost").C("tokens")
 	token := Token{}
-	err = c.Find(bson.M{"key": key}).One(&token)
+	err = c.Find(bson.M{"_id": key}).One(&token)
 	if err != nil {
 		if err.Error() == "not found" {
-			return nil
+			return nil, nil
 		}
-		panic(err)
+		return nil, err
 	}
-	return &token
+	return &token, nil
 }
 
-func (tm *tokenMongo) GetByConsumerID(consumerID string) []*Token {
+func (tm *tokenMongo) GetByConsumerID(consumerID string) ([]*Token, error) {
 	session, err := tm.newSession()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	defer session.Close()
 
@@ -197,11 +185,11 @@ func (tm *tokenMongo) GetByConsumerID(consumerID string) []*Token {
 	err = c.Find(bson.M{"consumer_id": consumerID}).All(&tokens)
 	if err != nil {
 		if err.Error() == "not found" {
-			return nil
+			return nil, nil
 		}
-		panic(err)
+		return nil, err
 	}
-	return tokens
+	return tokens, nil
 }
 
 func (tm *tokenMongo) Insert(token *Token) error {
@@ -231,7 +219,7 @@ func (tm *tokenMongo) Update(token *Token) error {
 	defer session.Close()
 
 	c := session.DB("bifrost").C("tokens")
-	colQuerier := bson.M{"key": token.Key}
+	colQuerier := bson.M{"_id": token.Key}
 	err = c.Update(colQuerier, token)
 	if err != nil {
 		return err
@@ -247,7 +235,7 @@ func (tm *tokenMongo) Delete(key string) error {
 	defer session.Close()
 
 	c := session.DB("bifrost").C("tokens")
-	colQuerier := bson.M{"key": key}
+	colQuerier := bson.M{"_id": key}
 	err = c.Remove(colQuerier)
 	if err != nil {
 		return err
