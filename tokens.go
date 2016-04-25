@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"sync"
 	"time"
 
@@ -214,7 +215,9 @@ func (tm *tokenMongo) Insert(token *Token) error {
 	token.CreatedAt = time.Now().UTC()
 	err = c.Insert(token)
 	if err != nil {
-		//TODO: duplicate key
+		if strings.HasPrefix(err.Error(), "E11000") {
+			return AppError{ErrorCode: "INVALID_DATA", Message: "The token key already exits"}
+		}
 		return err
 	}
 	return nil

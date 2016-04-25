@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"sync"
 	"time"
 
@@ -207,6 +208,9 @@ func (cm *consumerMongo) Insert(consumer *Consumer) error {
 	c := session.DB("bifrost").C("consumers")
 	err = c.Insert(consumer)
 	if err != nil {
+		if strings.HasPrefix(err.Error(), "E11000") {
+			return AppError{ErrorCode: "INVALID_DATA", Message: "The consumer already exists"}
+		}
 		return err
 	}
 	return nil
