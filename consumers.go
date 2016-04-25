@@ -109,10 +109,42 @@ type consumerMongo struct {
 	connectionString string
 }
 
-func newConsumerMongo(connectionString string) *consumerMongo {
+func newConsumerMongo(connectionString string) (*consumerMongo, error) {
+	session, err := mgo.Dial(connectionString)
+	if err != nil {
+		panic(err)
+	}
+	defer session.Close()
+	c := session.DB("bifrost").C("consumers")
+
+	// create index
+	idIdx := mgo.Index{
+		Name:       "consumer_id_idx",
+		Key:        []string{"id"},
+		Unique:     true,
+		Background: true,
+		Sparse:     true,
+	}
+	err = c.EnsureIndex(idIdx)
+	if err != nil {
+		return nil, err
+	}
+
+	appUsernameIdx := mgo.Index{
+		Name:       "consumer_app_username_idx",
+		Key:        []string{"app", "username"},
+		Unique:     true,
+		Background: true,
+		Sparse:     true,
+	}
+	err = c.EnsureIndex(appUsernameIdx)
+	if err != nil {
+		return nil, err
+	}
+
 	return &consumerMongo{
 		connectionString: connectionString,
-	}
+	}, nil
 }
 
 func (cm *consumerMongo) newSession() (*mgo.Session, error) {

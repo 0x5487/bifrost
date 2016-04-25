@@ -124,12 +124,41 @@ type tokenMongo struct {
 	connectionString string
 }
 
-func newTokenMongo(connectionString string) *tokenMongo {
-	// TODO: create token collection and build index
+func newTokenMongo(connectionString string) (*tokenMongo, error) {
+	session, err := mgo.Dial(connectionString)
+	if err != nil {
+		panic(err)
+	}
+	defer session.Close()
+	c := session.DB("bifrost").C("tokens")
+
+	// create index
+	keyIdx := mgo.Index{
+		Name:       "token_key_idx",
+		Key:        []string{"key"},
+		Unique:     true,
+		Background: true,
+		Sparse:     true,
+	}
+	err = c.EnsureIndex(keyIdx)
+	if err != nil {
+		return nil, err
+	}
+
+	consumerIdx := mgo.Index{
+		Name:       "token_consumer_idx",
+		Key:        []string{"consumer_id"},
+		Background: true,
+		Sparse:     true,
+	}
+	err = c.EnsureIndex(consumerIdx)
+	if err != nil {
+		return nil, err
+	}
 
 	return &tokenMongo{
 		connectionString: connectionString,
-	}
+	}, nil
 }
 
 func (tm *tokenMongo) newSession() (*mgo.Session, error) {
