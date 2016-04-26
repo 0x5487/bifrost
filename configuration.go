@@ -77,8 +77,18 @@ type DataSetting struct {
 	ConnectionString string `yaml:"connection_string"`
 }
 
+type Logs struct {
+	ErrorLog string
+}
+
 type Configuration struct {
-	Debug            bool     `yaml:"debug"`
+	Debug bool `yaml:"debug"`
+	Logs  struct {
+		ErrorLog struct {
+			Type             string `yaml:"type"`
+			ConnectionString string `yaml:"connection_string"`
+		} `yaml:"error_log"`
+	}
 	Binds            []string `yaml:"binds"`
 	AdminTokens      []string `yaml:"admin_tokens"`
 	ForwardRequestIP bool     `yaml:"forward_request_ip"`

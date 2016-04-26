@@ -2,17 +2,62 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"time"
 
 	"github.com/jasonsoft/napnap"
 )
+
+type Application struct {
+	Hostname string
+}
+
+func newApplication() *Application {
+	name, err := os.Hostname()
+	panicIf(err)
+
+	return &Application{
+		Hostname: name,
+	}
+}
 
 func notFound(c *napnap.Context, next napnap.HandlerFunc) {
 	c.Status(404)
 }
 
+func auth(c *napnap.Context, next napnap.HandlerFunc) {
+	if len(_config.AdminTokens) == 0 {
+		next(c)
+		return
+	} else {
+		key := c.RequestHeader("Authorization")
+		if len(key) == 0 {
+			c.Status(401)
+			return
+		}
+
+		var isFound bool
+		for _, token := range _config.AdminTokens {
+			if token == key {
+				isFound = true
+				break
+			}
+		}
+
+		if isFound {
+			next(c)
+		} else {
+			c.Status(401)
+		}
+	}
+}
+
 type AppError struct {
-	ErrorCode string `json:"error_code"`
-	Message   string `json:"message"`
+	RequestID string    `json:"-" bson:"_id"`
+	Hostname  string    `json:"-" bson:"hostname"`
+	ErrorCode string    `json:"error_code" bson:"-"`
+	Message   string    `json:"message" bson:"message"`
+	CreatedAt time.Time `json:"-" bson:"created_at"`
 }
 
 func (e AppError) Error() string {
@@ -47,39 +92,20 @@ func (m ApplicationMiddleware) Invoke(c *napnap.Context, next napnap.HandlerFunc
 
 			// unknown error
 			_logger.debugf("unknown error: %v", err)
+
+			requestID := c.Get("request_id").(string)
 			appError = AppError{
+				Hostname:  _app.Hostname,
+				RequestID: requestID,
 				ErrorCode: "UNKNOWN_ERROR",
 				Message:   "An unknown error has occurred.",
+			}
+
+			if _loggerMongo != nil {
+				go _loggerMongo.writeErrorLog(appError)
 			}
 			c.JSON(500, appError)
 		}
 	}()
 	next(c)
-}
-
-func auth(c *napnap.Context, next napnap.HandlerFunc) {
-	if len(_config.AdminTokens) == 0 {
-		next(c)
-		return
-	} else {
-		key := c.RequestHeader("Authorization")
-		if len(key) == 0 {
-			c.Status(401)
-			return
-		}
-
-		var isFound bool
-		for _, token := range _config.AdminTokens {
-			if token == key {
-				isFound = true
-				break
-			}
-		}
-
-		if isFound {
-			next(c)
-		} else {
-			c.Status(401)
-		}
-	}
 }

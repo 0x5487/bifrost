@@ -19,6 +19,8 @@ var (
 	_consumerRepo ConsumerRepository
 	_tokenRepo    TokenRepository
 	_status       *status
+	_loggerMongo  *loggerMongo
+	_app          *Application
 )
 
 func init() {
@@ -60,6 +62,12 @@ func init() {
 		_logger.mode = Debug
 	}
 
+	// set error logger
+	if _config.Logs.ErrorLog.Type == "mongodb" && len(_config.Logs.ErrorLog.ConnectionString) > 0 {
+		_logger.debug("enable mongodb log")
+		_loggerMongo = newloggerMongo()
+	}
+
 	// initial consumer and token storage
 	if _config.Data.Type == "memory" {
 		_consumerRepo = newConsumerMemStore()
@@ -75,6 +83,8 @@ func init() {
 			panic(err)
 		}
 	}
+	_app = newApplication()
+	_logger.debugf("hostname: %v", _app.Hostname)
 }
 
 func main() {
@@ -111,10 +121,7 @@ func main() {
 
 	// turn on health check feature
 	nap.Use(napnap.NewHealth())
-
-	if _config.ForwardRequestID {
-		nap.UseFunc(requestIDMiddleware())
-	}
+	nap.UseFunc(requestIDMiddleware())
 
 	// turn on CORS feature
 	cors := _config.Cors
