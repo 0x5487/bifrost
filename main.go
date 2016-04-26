@@ -99,6 +99,7 @@ func main() {
 	*/
 
 	nap := napnap.New()
+	nap.ForwardRemoteIpAddress = true
 	_status = newStatusMiddleware()
 	nap.Use(_status)
 

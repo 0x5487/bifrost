@@ -122,11 +122,8 @@ func (p *Proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	// forward reuqest ip
 	if _config.ForwardRequestIP {
 		clientIP := c.RemoteIpAddress()
-		// If we aren't the first proxy retain prior
-		// X-Forwarded-For information as a comma+space
-		// separated list and fold multiple headers into one.
-		if prior, ok := outReq.Header["X-Forwarded-For"]; ok {
-			clientIP = strings.Join(prior, ", ") + ", " + clientIP
+		if clientIP == "::1" {
+			clientIP = "127.0.0.1"
 		}
 		outReq.Header.Set("X-Forwarded-For", clientIP)
 	}
