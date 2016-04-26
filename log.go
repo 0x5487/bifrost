@@ -48,7 +48,7 @@ func (l *logger) fatalf(format string, v ...interface{}) {
 	}
 }
 
-// TODO: the following code need to be refactored
+// TODO: the following code needs to be refactored
 type loggerMongo struct {
 }
 
@@ -66,5 +66,7 @@ func (lm *loggerMongo) writeErrorLog(errorlog AppError) {
 	c := session.DB("bifrost").C("error_log")
 
 	err = c.Insert(errorlog)
-	_logger.debug(err)
+	if err != nil {
+		_logger.debug(err)
+	}
 }

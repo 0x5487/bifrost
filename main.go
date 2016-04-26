@@ -88,26 +88,6 @@ func init() {
 }
 
 func main() {
-
-	/*
-		api1 := Api{}
-		api1.Name = "Test"
-		api1.RequestHost = "*"
-		_config.Apis = append(_config.Apis, api1)
-
-		api2 := Api{}
-		api2.Name = "Test"
-		api2.RequestHost = "*"
-		_config.Apis = append(_config.Apis, api2)
-
-		d, err := yaml.Marshal(&_config)
-		if err != nil {
-			log.Fatalf("error: %v", err)
-		}
-
-		println(string(d))
-	*/
-
 	nap := napnap.New()
 	nap.ForwardRemoteIpAddress = true
 	_status = newStatusMiddleware()

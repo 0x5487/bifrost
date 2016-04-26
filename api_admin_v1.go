@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"time"
 
 	"github.com/jasonsoft/napnap"
@@ -9,7 +8,6 @@ import (
 )
 
 func upateOrCreateConsumerEndpoint(c *napnap.Context) {
-	panic(errors.New("ha..ha..ha..."))
 	var target Consumer
 	err := c.BindJSON(&target)
 	if err != nil {

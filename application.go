@@ -92,19 +92,20 @@ func (m ApplicationMiddleware) Invoke(c *napnap.Context, next napnap.HandlerFunc
 
 			// unknown error
 			_logger.debugf("unknown error: %v", err)
-
 			requestID := c.Get("request_id").(string)
 			appError = AppError{
 				Hostname:  _app.Hostname,
 				RequestID: requestID,
 				ErrorCode: "UNKNOWN_ERROR",
 				Message:   "An unknown error has occurred.",
+				CreatedAt: time.Now().UTC(),
 			}
 
+			c.JSON(500, appError)
 			if _loggerMongo != nil {
 				go _loggerMongo.writeErrorLog(appError)
 			}
-			c.JSON(500, appError)
+
 		}
 	}()
 	next(c)
