@@ -47,6 +47,7 @@ type Api struct {
 	RequestPath      string   `yaml:"request_path"`
 	StripRequestPath bool     `yaml:"strip_request_path"`
 	TargetURL        string   `yaml:"target_url"`
+	Redirect         bool     `yaml:"redirect"`
 	Policies         []Policy `yaml:"policies"`
 }
 

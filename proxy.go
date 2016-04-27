@@ -54,22 +54,23 @@ func NewProxy() *Proxy {
 }
 
 func (p *Proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
-	_logger.debug("begin proxy")
 	var api *Api
-	requestHost := c.Request.URL.Host
+	requestHost := c.Request.Host
 	requestPath := c.Request.URL.Path
-	consumer := c.Get("consumer").(Consumer)
+
+	_logger.debugf("request host: %v", requestHost)
+	_logger.debugf("request path: %v", requestPath)
+
+	consumer := c.MustGet("consumer").(Consumer)
 
 	// find api entry which match the request.
 	for _, apiEntry := range _config.Apis {
 		// ensure request host is match
-		if apiEntry.RequestHost != "*" {
-			if requestHost != apiEntry.RequestHost {
-				continue
-			}
+		if apiEntry.RequestHost != "*" && apiEntry.RequestHost != requestHost {
+			continue
 		}
 		// ensure request path is match
-		if strings.HasPrefix(requestPath, apiEntry.RequestPath) == false {
+		if apiEntry.RequestPath != "*" && strings.HasPrefix(requestPath, apiEntry.RequestPath) == false {
 			continue
 		}
 		// ensure the consumer has access permission
@@ -110,6 +111,13 @@ func (p *Proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 
 	_logger.debugf("URL: %s", url)
 
+	// redirect if needed
+	if api.Redirect {
+		_logger.debug("redirect to ", url)
+		c.Redirect(301, url)
+		return
+	}
+
 	method := c.Request.Method
 	body, _ := ioutil.ReadAll(c.Request.Body)
 
@@ -133,7 +141,7 @@ func (p *Proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 
 	// forward reuqest id
 	if _config.ForwardRequestID {
-		requestID := c.Get("request_id").(string)
+		requestID := c.MustGet("request_id").(string)
 		outReq.Header.Set("X-Request-Id", requestID)
 	}
 
