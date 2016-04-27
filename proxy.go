@@ -11,8 +11,9 @@ import (
 )
 
 type Proxy struct {
-	client     *http.Client
-	hopHeaders []string
+	client      *http.Client
+	hopHeaders  []string
+	corsHeaders []string
 }
 
 func NewProxy() *Proxy {
@@ -40,11 +41,15 @@ func NewProxy() *Proxy {
 
 		// custom
 		"Content-Length",
+		"Cache-Control",
+	}
+
+	p.corsHeaders = []string{
 		"Access-Control-Allow-Origin",
 		"Access-Control-Allow-Headers",
 		"Access-Control-Allow-Methods",
-		"Cache-Control",
 	}
+
 	return p
 }
 
@@ -115,9 +120,7 @@ func (p *Proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 
 	// copy the request header
 	p.copyHeader(outReq.Header, c.Request.Header)
-	for _, h := range p.hopHeaders {
-		outReq.Header.Del(h)
-	}
+	p.removeHeader(outReq.Header)
 
 	// forward reuqest ip
 	if _config.ForwardRequestIP {
@@ -168,11 +171,8 @@ func (p *Proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	defer respClose(resp.Body)
 
 	// copy the response header
-	/*
-		p.copyHeader(c.Writer.Header(), resp.Header)
-		for _, h := range p.hopHeaders {
-			c.Writer.Header().Del(h)
-		}*/
+	p.removeHeader(resp.Header)
+	p.copyHeader(c.Writer.Header(), resp.Header)
 
 	// write body
 	body, _ = ioutil.ReadAll(resp.Body)
@@ -185,6 +185,17 @@ func (p *Proxy) copyHeader(dst, src http.Header) {
 	for k, vv := range src {
 		for _, v := range vv {
 			dst.Add(k, v)
+		}
+	}
+}
+
+func (p *Proxy) removeHeader(header http.Header) {
+	for _, h := range p.hopHeaders {
+		header.Del(h)
+	}
+	if _config.Cors.Enable {
+		for _, corsHeader := range p.corsHeaders {
+			header.Del(corsHeader)
 		}
 	}
 }
