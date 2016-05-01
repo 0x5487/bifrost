@@ -1,27 +1,11 @@
 package main
 
 import (
-	"net/http"
 	"sync"
 	"time"
 
 	"github.com/jasonsoft/napnap"
 )
-
-type responseWriterWithLength struct {
-	http.ResponseWriter
-	length int
-}
-
-func (w *responseWriterWithLength) Write(b []byte) (n int, err error) {
-	n, err = w.ResponseWriter.Write(b)
-	w.length += n
-	return
-}
-
-func (w *responseWriterWithLength) Length() int {
-	return w.length
-}
 
 type status struct {
 	sync.Mutex
@@ -46,11 +30,9 @@ func (s *status) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	}
 	s.Unlock()
 
-	lengthWriter := &responseWriterWithLength{c.Writer, 0}
-	c.Writer = lengthWriter
 	next(c)
 
 	s.Lock()
-	s.NetworkOut += int64(lengthWriter.length)
+	s.NetworkOut += int64(c.Writer.ContentLength())
 	s.Unlock()
 }
