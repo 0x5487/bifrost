@@ -76,10 +76,10 @@ func (p *Proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 		// ensure the consumer has access permission
 		if apiEntry.isAllow(consumer) == false {
 			if consumer.isAuthenticated() {
-				c.Status(403)
+				c.SetStatus(403)
 				return
 			}
-			c.Status(401)
+			c.SetStatus(401)
 			return
 		}
 		api = &apiEntry
@@ -132,7 +132,7 @@ func (p *Proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 
 	// forward reuqest ip
 	if _config.ForwardRequestIP {
-		clientIP := c.RemoteIpAddress()
+		clientIP := c.RemoteIPAddress()
 		if clientIP == "::1" {
 			clientIP = "127.0.0.1"
 		}

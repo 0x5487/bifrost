@@ -22,7 +22,7 @@ func newApplication() *Application {
 }
 
 func notFound(c *napnap.Context, next napnap.HandlerFunc) {
-	c.Status(404)
+	c.SetStatus(404)
 }
 
 func auth(c *napnap.Context, next napnap.HandlerFunc) {
@@ -32,7 +32,7 @@ func auth(c *napnap.Context, next napnap.HandlerFunc) {
 	} else {
 		key := c.RequestHeader("Authorization")
 		if len(key) == 0 {
-			c.Status(401)
+			c.SetStatus(401)
 			return
 		}
 
@@ -47,7 +47,7 @@ func auth(c *napnap.Context, next napnap.HandlerFunc) {
 		if isFound {
 			next(c)
 		} else {
-			c.Status(401)
+			c.SetStatus(401)
 		}
 	}
 }

@@ -159,13 +159,13 @@ func updateTokensEndpoint(c *napnap.Context) {
 		panic(AppError{ErrorCode: "INVALID_DATA", Message: err.Error()})
 	}
 	if len(tokens) == 0 {
-		c.Status(204)
+		c.SetStatus(204)
 		return
 	}
 	for _, token := range tokens {
 		_tokenRepo.Update(&token)
 	}
-	c.Status(204)
+	c.SetStatus(204)
 }
 
 func deleteTokenEndpoint(c *napnap.Context) {
@@ -184,7 +184,7 @@ func deleteTokenEndpoint(c *napnap.Context) {
 	err = _tokenRepo.Delete(key)
 	panicIf(err)
 
-	c.Status(204)
+	c.SetStatus(204)
 }
 
 func deleteTokensEndpoint(c *napnap.Context) {
@@ -204,7 +204,7 @@ func deleteTokensEndpoint(c *napnap.Context) {
 
 	// delete all token by consumer id
 	_tokenRepo.DeleteByConsumerID(consumerId)
-	c.Status(204)
+	c.SetStatus(204)
 }
 
 func getStatus(c *napnap.Context) {
