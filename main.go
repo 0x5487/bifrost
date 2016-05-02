@@ -4,10 +4,12 @@ import (
 	"flag"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/jasonsoft/napnap"
 	"gopkg.in/yaml.v2"
@@ -21,6 +23,7 @@ var (
 	_status       *status
 	_loggerMongo  *loggerMongo
 	_app          *Application
+	_client       *http.Client
 )
 
 func init() {
@@ -88,20 +91,36 @@ func init() {
 }
 
 func main() {
+
+	_client = &http.Client{
+		Transport: &http.Transport{
+			MaxIdleConnsPerHost: 20,
+		},
+		Timeout: time.Duration(30) * time.Second,
+	}
+
 	nap := napnap.New()
 	nap.ForwardRemoteIpAddress = true
+	nap.UseFunc(requestIDMiddleware())
+
+	// set access log
+	if len(_config.Logs.AccessLog.Type) > 0 && _config.Logs.AccessLog.Type == "gelf_udp" {
+		_logger.debugf("access log were enabled and connection string are %s", _config.Logs.AccessLog.ConnectionString)
+		nap.Use(newAccessLogMiddleware(_config.Logs.AccessLog.ConnectionString))
+	}
+
 	_status = newStatusMiddleware()
 	nap.Use(_status)
 
 	// turn on gzip feature
 	gzip := _config.Gzip
 	if gzip.Enable {
+		_logger.debug("gzip was enabled")
 		nap.Use(napnap.NewGzip(napnap.DefaultCompression))
 	}
 
 	// turn on health check feature
 	nap.Use(napnap.NewHealth())
-	nap.UseFunc(requestIDMiddleware())
 
 	// turn on CORS feature
 	cors := _config.Cors

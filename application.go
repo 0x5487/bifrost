@@ -92,7 +92,7 @@ func (m ApplicationMiddleware) Invoke(c *napnap.Context, next napnap.HandlerFunc
 
 			// unknown error
 			_logger.debugf("unknown error: %v", err)
-			requestID := c.MustGet("request_id").(string)
+			requestID := c.MustGet("request-id").(string)
 			appError = AppError{
 				Hostname:  _app.Hostname,
 				RequestID: requestID,

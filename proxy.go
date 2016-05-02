@@ -141,7 +141,7 @@ func (p *Proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 
 	// forward reuqest id
 	if _config.ForwardRequestID {
-		requestID := c.MustGet("request_id").(string)
+		requestID := c.MustGet("request-id").(string)
 		outReq.Header.Set("X-Request-Id", requestID)
 	}
 

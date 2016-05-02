@@ -85,6 +85,10 @@ type Logs struct {
 type Configuration struct {
 	Debug bool `yaml:"debug"`
 	Logs  struct {
+		AccessLog struct {
+			Type             string `yaml:"type"`
+			ConnectionString string `yaml:"connection_string"`
+		} `yaml:"access_log"`
 		ErrorLog struct {
 			Type             string `yaml:"type"`
 			ConnectionString string `yaml:"connection_string"`
