@@ -4,27 +4,24 @@ import (
 	"flag"
 	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/jasonsoft/napnap"
 	"gopkg.in/yaml.v2"
 )
 
 var (
-	_config        Configuration
-	_logger        *logger
-	_consumerRepo  ConsumerRepository
-	_tokenRepo     TokenRepository
-	_status        *status
-	_loggerMongo   *loggerMongo
-	_app           *Application
-	_client        *http.Client
-	_accessLogChan chan accessLog
+	_config         Configuration
+	_logger         *logger
+	_consumerRepo   ConsumerRepository
+	_tokenRepo      TokenRepository
+	_status         *status
+	_loggerMongo    *loggerMongo
+	_app            *Application
+	_accessLogsChan chan accessLog
 )
 
 func init() {
@@ -63,7 +60,8 @@ func init() {
 	// setup logger
 	_logger = newLog()
 	if _config.Debug {
-		_logger.mode = Debug
+		_logger.debug("debug mode was enabled")
+		_logger.mode = debugLevel
 	}
 
 	// set error logger
@@ -92,23 +90,15 @@ func init() {
 }
 
 func main() {
-
-	_client = &http.Client{
-		Transport: &http.Transport{
-			MaxIdleConnsPerHost: 20,
-		},
-		Timeout: time.Duration(30) * time.Second,
-	}
-
 	nap := napnap.New()
 	nap.ForwardRemoteIpAddress = true
 	nap.UseFunc(requestIDMiddleware())
 
 	// set access log
 	if len(_config.Logs.AccessLog.Type) > 0 && _config.Logs.AccessLog.Type == "gelf_udp" {
-		_accessLogChan = make(chan accessLog, 100000)
+		_accessLogsChan = make(chan accessLog, 100000)
 		_logger.debugf("access log were enabled and connection string are %s", _config.Logs.AccessLog.ConnectionString)
-		nap.Use(newAccessLogMiddleware(_config.Logs.AccessLog.ConnectionString))
+		nap.Use(newAccessLogMiddleware())
 		go writeAccessLog(_config.Logs.AccessLog.ConnectionString)
 		go listQueueCount()
 	}

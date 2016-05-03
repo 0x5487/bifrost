@@ -7,11 +7,11 @@ import (
 )
 
 const (
-	Debug   = 0
-	Info    = 1
-	Warning = 2
-	Error   = 3
-	Fatal   = 4
+	debugLevel   = 0
+	infoLevel    = 1
+	warningLevel = 2
+	errorLevel   = 3
+	fatalLevel   = 4
 )
 
 type logger struct {
@@ -20,30 +20,42 @@ type logger struct {
 
 func newLog() *logger {
 	return &logger{
-		mode: Info,
+		mode: infoLevel,
 	}
 }
 
 func (l *logger) debug(v ...interface{}) {
-	if l.mode <= Debug {
+	if l.mode <= debugLevel {
 		log.Println(v)
 	}
 }
 
 func (l *logger) debugf(format string, v ...interface{}) {
-	if l.mode <= Debug {
+	if l.mode <= debugLevel {
+		log.Printf(format, v)
+	}
+}
+
+func (l *logger) info(v ...interface{}) {
+	if l.mode <= infoLevel {
+		log.Println(v)
+	}
+}
+
+func (l *logger) infof(format string, v ...interface{}) {
+	if l.mode <= infoLevel {
 		log.Printf(format, v)
 	}
 }
 
 func (l *logger) fatal(v ...interface{}) {
-	if l.mode <= Fatal {
+	if l.mode <= fatalLevel {
 		log.Fatal(v)
 	}
 }
 
 func (l *logger) fatalf(format string, v ...interface{}) {
-	if l.mode <= Fatal {
+	if l.mode <= fatalLevel {
 		log.Fatalf(format, v)
 	}
 }
