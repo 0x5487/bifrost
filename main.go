@@ -16,14 +16,15 @@ import (
 )
 
 var (
-	_config       Configuration
-	_logger       *logger
-	_consumerRepo ConsumerRepository
-	_tokenRepo    TokenRepository
-	_status       *status
-	_loggerMongo  *loggerMongo
-	_app          *Application
-	_client       *http.Client
+	_config        Configuration
+	_logger        *logger
+	_consumerRepo  ConsumerRepository
+	_tokenRepo     TokenRepository
+	_status        *status
+	_loggerMongo   *loggerMongo
+	_app           *Application
+	_client        *http.Client
+	_accessLogChan chan accessLog
 )
 
 func init() {
@@ -105,8 +106,11 @@ func main() {
 
 	// set access log
 	if len(_config.Logs.AccessLog.Type) > 0 && _config.Logs.AccessLog.Type == "gelf_udp" {
+		_accessLogChan = make(chan accessLog, 100000)
 		_logger.debugf("access log were enabled and connection string are %s", _config.Logs.AccessLog.ConnectionString)
 		nap.Use(newAccessLogMiddleware(_config.Logs.AccessLog.ConnectionString))
+		go writeAccessLog(_config.Logs.AccessLog.ConnectionString)
+		go listQueueCount()
 	}
 
 	_status = newStatusMiddleware()
