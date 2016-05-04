@@ -16,6 +16,7 @@ type accessLog struct {
 	status        int
 	contentLength int
 	clientIP      string
+	duration	string
 }
 
 type accessLogMiddleware struct {
@@ -26,13 +27,15 @@ func newAccessLogMiddleware() *accessLogMiddleware {
 }
 
 func (am *accessLogMiddleware) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
+	startTime := time.Now()
 	next(c)
+	duration := time.Since(startTime)
 
 	clientIP := c.RemoteIPAddress()
 	if len(clientIP) > 0 && clientIP == "::1" {
 		clientIP = "127.0.0.1"
 	}
-
+	
 	requestID := c.MustGet("request-id").(string)
 	shortMsg := fmt.Sprintf("%s %s", c.Request.Method, c.Request.URL.Path)
 	accessLog := accessLog{
@@ -43,6 +46,7 @@ func (am *accessLogMiddleware) Invoke(c *napnap.Context, next napnap.HandlerFunc
 		status:        c.Writer.Status(),
 		contentLength: c.Writer.ContentLength(),
 		clientIP:      clientIP,
+		duration: duration.String(),
 	}
 
 	select {
@@ -66,9 +70,10 @@ func writeAccessLog(connectionString string) {
 	}
 
 	// check connection status
+	hi := []byte("hi")
 	go func() {
 		for {
-			_, err = conn.Write([]byte("hi"))
+			_, err = conn.Write(hi)
 			if err != nil {
 				_logger.debug("conn was closed")
 				newConn, err := net.Dial("tcp", connectionString)
@@ -82,6 +87,7 @@ func writeAccessLog(connectionString string) {
 		}
 	}()
 
+	var empty byte
 	for {
 		select {
 		case accesslogElement := <-_accessLogsChan:
@@ -93,10 +99,10 @@ func writeAccessLog(connectionString string) {
 				"_domain": "%s",
 				"_status": %d,
 				"_content_length" : %d,
-				"_client_ip": "%s"
-			}`, log.host, log.shortMessage, log.requestID, log.domain, log.status, log.contentLength, log.clientIP)
+				"_client_ip": "%s",
+				"_duration": "%s"
+			}`, log.host, log.shortMessage, log.requestID, log.domain, log.status, log.contentLength, log.clientIP, log.duration)
 				payload := []byte(str)
-				var empty byte
 				payload = append(payload, empty) // when we use tcp, we need to add null byte in the end.
 				conn.Write(payload)
 			}(accesslogElement)
