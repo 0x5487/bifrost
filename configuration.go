@@ -51,6 +51,10 @@ type Api struct {
 	Policies         []Policy `yaml:"policies"`
 }
 
+func (*Api) isValid() bool {
+	return true
+}
+
 func (a Api) isAllow(consumer Consumer) bool {
 	for _, policy := range a.Policies {
 		if policy.isAllowPolicy() == false {
