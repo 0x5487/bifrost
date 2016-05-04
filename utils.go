@@ -29,3 +29,10 @@ func panicIf(err error) {
 		panic(err)
 	}
 }
+
+func getClientIP(ip string) string {
+	if len(ip) > 0 && ip == "::1" {
+		return "127.0.0.1"
+	}
+	return ip
+}

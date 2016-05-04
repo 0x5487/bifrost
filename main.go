@@ -22,6 +22,7 @@ var (
 	_loggerMongo    *loggerMongo
 	_app            *Application
 	_accessLogsChan chan accessLog
+	_errorLogsChan  chan errorLog
 )
 
 func init() {
@@ -64,12 +65,6 @@ func init() {
 		_logger.mode = debugLevel
 	}
 
-	// set error logger
-	if _config.Logs.ErrorLog.Type == "mongodb" && len(_config.Logs.ErrorLog.ConnectionString) > 0 {
-		_logger.debug("enable mongodb log")
-		_loggerMongo = newloggerMongo()
-	}
-
 	// initial consumer and token storage
 	if _config.Data.Type == "memory" {
 		_consumerRepo = newConsumerMemStore()
@@ -95,12 +90,24 @@ func main() {
 	nap.UseFunc(requestIDMiddleware())
 
 	// set access log
-	if len(_config.Logs.AccessLog.Type) > 0 && _config.Logs.AccessLog.Type == "gelf_udp" {
-		_accessLogsChan = make(chan accessLog, 100000)
-		_logger.debugf("access log were enabled and connection string are %s", _config.Logs.AccessLog.ConnectionString)
+	if len(_config.Logs.AccessLog.Type) > 0 && _config.Logs.AccessLog.Type == "gelf_tcp" {
+		_accessLogsChan = make(chan accessLog, 20000)
 		nap.Use(newAccessLogMiddleware())
 		go writeAccessLog(_config.Logs.AccessLog.ConnectionString)
-		go listQueueCount()
+		_logger.debugf("access log were enabled and connection string are %s", _config.Logs.AccessLog.ConnectionString)
+	}
+
+	// set custom errors
+	if _config.CustomErrors {
+		nap.Use(newCustomErrorsMiddleware())
+	}
+
+	// set error logger
+	nap.Use(newErrorLogMiddleware(true))
+	if _config.Logs.ErrorLog.Type == "gelf_tcp" && len(_config.Logs.ErrorLog.ConnectionString) > 0 {
+		_errorLogsChan = make(chan errorLog, 10000)
+		go writeErrorLog(_config.Logs.ErrorLog.ConnectionString)
+		_logger.debug("error log were enabled and connection string are string are %s", _config.Logs.ErrorLog.ConnectionString)
 	}
 
 	_status = newStatusMiddleware()
@@ -134,7 +141,7 @@ func main() {
 	// admin api
 	adminNap := napnap.New()
 	adminNap.Use(napnap.NewHealth())
-	adminNap.Use(newApplicationMiddleware())
+	adminNap.Use(newErrorLogMiddleware(false))
 	adminNap.UseFunc(requestIDMiddleware())
 	adminNap.UseFunc(auth) // verify all request which send to admin api and ensure the caller has valid admin token.
 

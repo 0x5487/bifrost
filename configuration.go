@@ -94,6 +94,7 @@ type Configuration struct {
 			ConnectionString string `yaml:"connection_string"`
 		} `yaml:"error_log"`
 	}
+	CustomErrors     bool     `yaml:"custom_errors"`
 	Binds            []string `yaml:"binds"`
 	AdminTokens      []string `yaml:"admin_tokens"`
 	ForwardRequestIP bool     `yaml:"forward_request_ip"`

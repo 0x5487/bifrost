@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net"
+	"net/http/httputil"
 	"time"
 
 	"github.com/jasonsoft/napnap"
@@ -11,12 +12,14 @@ import (
 type accessLog struct {
 	host          string
 	shortMessage  string
+	fullMessage   string
 	requestID     string
 	domain        string
 	status        int
 	contentLength int
 	clientIP      string
-	duration	string
+	duration      string
+	userAgent     string
 }
 
 type accessLogMiddleware struct {
@@ -31,11 +34,7 @@ func (am *accessLogMiddleware) Invoke(c *napnap.Context, next napnap.HandlerFunc
 	next(c)
 	duration := time.Since(startTime)
 
-	clientIP := c.RemoteIPAddress()
-	if len(clientIP) > 0 && clientIP == "::1" {
-		clientIP = "127.0.0.1"
-	}
-	
+	clientIP := getClientIP(c.RemoteIPAddress())
 	requestID := c.MustGet("request-id").(string)
 	shortMsg := fmt.Sprintf("%s %s", c.Request.Method, c.Request.URL.Path)
 	accessLog := accessLog{
@@ -46,19 +45,29 @@ func (am *accessLogMiddleware) Invoke(c *napnap.Context, next napnap.HandlerFunc
 		status:        c.Writer.Status(),
 		contentLength: c.Writer.ContentLength(),
 		clientIP:      clientIP,
-		duration: duration.String(),
+		duration:      duration.String(),
+	}
+
+	if !(c.Writer.Status() >= 200 && c.Writer.Status() < 400) {
+		requestDump, _ := httputil.DumpRequest(c.Request, true)
+		respMsg, _ := c.Get("error")
+		if respMsg != nil {
+			respMessage := respMsg.(string)
+			fullMessage := fmt.Sprintf("Upsteam response: %s \n\nRequest info: %s \n ", respMessage, string(requestDump))
+			accessLog.fullMessage = fullMessage
+		}
 	}
 
 	select {
 	case _accessLogsChan <- accessLog:
 	default:
-		fmt.Println("queue full")
+		_logger.debug("access log queue was full")
 	}
 }
 
 func listQueueCount() {
 	for {
-		println(fmt.Sprintf("count: %d", len(_accessLogsChan)))
+		_logger.debug(fmt.Sprintf("count: %d", len(_accessLogsChan)))
 		time.Sleep(1 * time.Second)
 	}
 }
@@ -69,19 +78,16 @@ func writeAccessLog(connectionString string) {
 		panic(err)
 	}
 
-	// check connection status
+	// check connection status every 5 seconds
 	hi := []byte("hi")
 	go func() {
 		for {
 			_, err = conn.Write(hi)
 			if err != nil {
-				_logger.debug("conn was closed")
 				newConn, err := net.Dial("tcp", connectionString)
 				if err == nil {
 					conn = newConn
 				}
-			} else {
-				_logger.debug("conn is good")
 			}
 			time.Sleep(5 * time.Second)
 		}
@@ -95,19 +101,19 @@ func writeAccessLog(connectionString string) {
 				str := fmt.Sprintf(`{
 				"host": "%s",
 				"short_message": "%s",
+				"full_message": "%s",
 				"_request_id": "%s",
 				"_domain": "%s",
 				"_status": %d,
 				"_content_length" : %d,
 				"_client_ip": "%s",
 				"_duration": "%s"
-			}`, log.host, log.shortMessage, log.requestID, log.domain, log.status, log.contentLength, log.clientIP, log.duration)
+			}`, log.host, log.shortMessage, log.fullMessage, log.requestID, log.domain, log.status, log.contentLength, log.clientIP, log.duration)
 				payload := []byte(str)
 				payload = append(payload, empty) // when we use tcp, we need to add null byte in the end.
 				conn.Write(payload)
 			}(accesslogElement)
 		default:
-			_logger.debug("write log is sleeping...")
 			time.Sleep(5 * time.Second)
 		}
 	}

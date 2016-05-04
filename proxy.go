@@ -132,10 +132,7 @@ func (p *Proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 
 	// forward reuqest ip
 	if _config.ForwardRequestIP {
-		clientIP := c.RemoteIPAddress()
-		if clientIP == "::1" {
-			clientIP = "127.0.0.1"
-		}
+		clientIP := getClientIP(c.RemoteIPAddress())
 		outReq.Header.Set("X-Forwarded-For", clientIP)
 	}
 
@@ -178,12 +175,25 @@ func (p *Proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	}
 	defer respClose(resp.Body)
 
+	body, _ = ioutil.ReadAll(resp.Body)
+
+	// set error message
+	if !(resp.StatusCode >= 200 && resp.StatusCode < 400) {
+		c.Set("status_code", resp.StatusCode)
+		c.Set("error", string(body))
+	}
+
+	if _config.CustomErrors && resp.StatusCode == 500 {
+		// don't write the message when custom error turns on
+		return
+	}
+
 	// copy the response header
 	p.removeHeader(resp.Header)
 	p.copyHeader(c.Writer.Header(), resp.Header)
 
 	// write body
-	body, _ = ioutil.ReadAll(resp.Body)
+	c.SetStatus(resp.StatusCode)
 	c.Writer.Write(body)
 }
 
