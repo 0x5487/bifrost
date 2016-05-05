@@ -10,14 +10,14 @@ import (
 	"github.com/jasonsoft/napnap"
 )
 
-type Proxy struct {
+type proxy struct {
 	client      *http.Client
 	hopHeaders  []string
 	corsHeaders []string
 }
 
-func NewProxy() *Proxy {
-	p := &Proxy{}
+func newProxy() *proxy {
+	p := &proxy{}
 
 	p.client = &http.Client{
 		Transport: &http.Transport{
@@ -53,7 +53,7 @@ func NewProxy() *Proxy {
 	return p
 }
 
-func (p *Proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
+func (p *proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	var api *Api
 	requestHost := strings.ToLower(c.Request.Host)
 	requestPath := strings.ToLower(c.Request.URL.Path)
@@ -199,7 +199,7 @@ func (p *Proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 
 // CopyHeaders copies http headers from source to destination, it
 // does not overide, but adds multiple headers
-func (p *Proxy) copyHeader(dst, src http.Header) {
+func (p *proxy) copyHeader(dst, src http.Header) {
 	for k, vv := range src {
 		for _, v := range vv {
 			dst.Add(k, v)
@@ -207,7 +207,7 @@ func (p *Proxy) copyHeader(dst, src http.Header) {
 	}
 }
 
-func (p *Proxy) removeHeader(header http.Header) {
+func (p *proxy) removeHeader(header http.Header) {
 	for _, h := range p.hopHeaders {
 		header.Del(h)
 	}

@@ -135,7 +135,7 @@ func main() {
 	}
 
 	nap.UseFunc(identity)
-	nap.Use(NewProxy())
+	nap.Use(newProxy())
 	nap.UseFunc(notFound)
 
 	// admin api
