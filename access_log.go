@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http/httputil"
@@ -10,16 +11,16 @@ import (
 )
 
 type accessLog struct {
-	host          string
-	shortMessage  string
-	fullMessage   string
-	requestID     string
-	domain        string
-	status        int
-	contentLength int
-	clientIP      string
-	duration      string
-	userAgent     string
+	Host          string `json:"host"`
+	ShortMessage  string `json:"short_message"`
+	FullMessage   string `json:"full_message"`
+	RequestID     string `json:"_request_id"`
+	Domain        string `json:"_domain"`
+	Status        int    `json:"_status"`
+	ContentLength int    `json:"_content_length"`
+	ClientIP      string `json:"shortMessage"`
+	Duration      string `json:"_duration"`
+	UserAgent     string `json:"_userAgent"`
 }
 
 type accessLogMiddleware struct {
@@ -38,15 +39,15 @@ func (am *accessLogMiddleware) Invoke(c *napnap.Context, next napnap.HandlerFunc
 	shortMsg := fmt.Sprintf("%s %s", c.Request.Method, c.Request.URL.Path)
 	userAgnet := c.RequestHeader("User-Agent")
 	accessLog := accessLog{
-		host:          _app.hostname,
-		shortMessage:  shortMsg,
-		requestID:     requestID,
-		domain:        c.Request.Host,
-		status:        c.Writer.Status(),
-		contentLength: c.Writer.ContentLength(),
-		clientIP:      clientIP,
-		userAgent:     userAgnet,
-		duration:      duration.String(),
+		Host:          _app.hostname,
+		ShortMessage:  shortMsg,
+		RequestID:     requestID,
+		Domain:        c.Request.Host,
+		Status:        c.Writer.Status(),
+		ContentLength: c.Writer.ContentLength(),
+		ClientIP:      clientIP,
+		UserAgent:     userAgnet,
+		Duration:      duration.String(),
 	}
 
 	if !(c.Writer.Status() >= 200 && c.Writer.Status() < 400) {
@@ -55,7 +56,7 @@ func (am *accessLogMiddleware) Invoke(c *napnap.Context, next napnap.HandlerFunc
 		if respMsg != nil {
 			respMessage := respMsg.(string)
 			fullMessage := fmt.Sprintf("Upsteam response: %s \n\nRequest info: %s \n ", respMessage, string(requestDump))
-			accessLog.fullMessage = fullMessage
+			accessLog.FullMessage = fullMessage
 		}
 	}
 
@@ -80,10 +81,10 @@ func writeAccessLog(connectionString string) {
 	}
 
 	// check connection status every 5 seconds
-	hi := []byte("hi")
+	var emptyByteArray []byte
 	go func() {
 		for {
-			_, err = conn.Write(hi)
+			_, err = conn.Write(emptyByteArray)
 			if err != nil {
 				newConn, err := net.Dial("tcp", connectionString)
 				if err == nil {
@@ -97,24 +98,12 @@ func writeAccessLog(connectionString string) {
 	var empty byte
 	for {
 		select {
-		case accesslogElement := <-_accessLogsChan:
+		case logElement := <-_accessLogsChan:
 			go func(log accessLog) {
-				str := fmt.Sprintf(`{
-				"host": "%s",
-				"short_message": "%s",
-				"full_message": "%s",
-				"_request_id": "%s",
-				"_domain": "%s",
-				"_status": %d,
-				"_content_length" : %d,
-				"_user_agent": "%s"
-				"_client_ip": "%s",
-				"_duration": "%s"
-			}`, log.host, log.shortMessage, log.fullMessage, log.requestID, log.domain, log.status, log.contentLength, log.userAgent, log.clientIP, log.duration)
-				payload := []byte(str)
+				payload, _ := json.Marshal(log)
 				payload = append(payload, empty) // when we use tcp, we need to add null byte in the end.
 				conn.Write(payload)
-			}(accesslogElement)
+			}(logElement)
 		default:
 			time.Sleep(5 * time.Second)
 		}

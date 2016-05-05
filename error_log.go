@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http/httputil"
@@ -10,14 +11,14 @@ import (
 )
 
 type errorLog struct {
-	host         string
-	app          string
-	domain       string
-	requestID    string
-	level        int
-	shortMessage string
-	fullMessage  string
-	clientIP     string
+	Host         string `json:"host"`
+	App          string `json:"_app"`
+	Domain       string `json:"_domain"`
+	RequestID    string `json:"_request_id"`
+	Level        int    `json:"_level"`
+	ShortMessage string `json:"short_message"`
+	FullMessage  string `json:"full_message"`
+	ClientIP     string `json:"_client_ip"`
 }
 
 type errorLogMiddleware struct {
@@ -63,14 +64,14 @@ func (m *errorLogMiddleware) Invoke(c *napnap.Context, next napnap.HandlerFunc) 
 				shortMsg := fmt.Sprintf("%s %s", c.Request.Method, c.Request.URL.Path)
 				fullMessage := fmt.Sprintf("error message: %s \n request info: %s \n ", err.Error(), string(requestDump))
 				errorLog := errorLog{
-					host:         _app.hostname,
-					app:          _app.name,
-					domain:       c.Request.Host,
-					level:        3,
-					requestID:    requestID,
-					shortMessage: shortMsg,
-					fullMessage:  fullMessage,
-					clientIP:     clientIP,
+					Host:         _app.hostname,
+					App:          _app.name,
+					Domain:       c.Request.Host,
+					Level:        3,
+					RequestID:    requestID,
+					ShortMessage: shortMsg,
+					FullMessage:  fullMessage,
+					ClientIP:     clientIP,
 				}
 
 				select {
@@ -91,10 +92,10 @@ func writeErrorLog(connectionString string) {
 	}
 
 	// check connection status every 5 seconds
-	hi := []byte("hi")
+	var emptyByteArray []byte
 	go func() {
 		for {
-			_, err = conn.Write(hi)
+			_, err = conn.Write(emptyByteArray)
 			if err != nil {
 				newConn, err := net.Dial("tcp", connectionString)
 				if err == nil {
@@ -110,17 +111,7 @@ func writeErrorLog(connectionString string) {
 		select {
 		case logElement := <-_errorLogsChan:
 			go func(log errorLog) {
-				str := fmt.Sprintf(`{
-				"host": "%s",
-				"_app": "%s",
-				"short_message": "%s",
-				"full_message": "%s",
-				"level": %d,
-				"_request_id": "%s",
-				"_domain": "%s",
-				"_client_ip": "%s"				
-			}`, log.host, log.app, log.shortMessage, log.fullMessage, log.level, log.requestID, log.domain, log.clientIP)
-				payload := []byte(str)
+				payload, _ := json.Marshal(log)
 				payload = append(payload, empty) // when we use tcp, we need to add null byte in the end.
 				conn.Write(payload)
 			}(logElement)
