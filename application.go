@@ -8,16 +8,18 @@ import (
 	"github.com/jasonsoft/napnap"
 )
 
-type Application struct {
-	Hostname string
+type application struct {
+	name     string
+	hostname string
 }
 
-func newApplication() *Application {
+func newApplication() *application {
 	name, err := os.Hostname()
 	panicIf(err)
 
-	return &Application{
-		Hostname: name,
+	return &application{
+		name:     "bifrost",
+		hostname: name,
 	}
 }
 

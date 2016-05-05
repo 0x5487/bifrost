@@ -20,7 +20,7 @@ var (
 	_tokenRepo      TokenRepository
 	_status         *status
 	_loggerMongo    *loggerMongo
-	_app            *Application
+	_app            *application
 	_accessLogsChan chan accessLog
 	_errorLogsChan  chan errorLog
 )
@@ -81,7 +81,7 @@ func init() {
 		}
 	}
 	_app = newApplication()
-	_logger.debugf("hostname: %v", _app.Hostname)
+	_logger.debugf("hostname: %v", _app.hostname)
 }
 
 func main() {

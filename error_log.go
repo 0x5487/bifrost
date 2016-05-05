@@ -11,8 +11,10 @@ import (
 
 type errorLog struct {
 	host         string
+	app          string
 	domain       string
 	requestID    string
+	level        int
 	shortMessage string
 	fullMessage  string
 	clientIP     string
@@ -30,7 +32,9 @@ func newErrorLogMiddleware(enableErrorLog bool) *errorLogMiddleware {
 
 func (m *errorLogMiddleware) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	defer func() {
+		// we only handle error for bifrost application and don't handle can't error from upstream.
 		if r := recover(); r != nil {
+			// bad request.  http status code is 400 series.
 			appError, ok := r.(AppError)
 			if ok {
 				c.Set("error", appError.Message)
@@ -42,7 +46,7 @@ func (m *errorLogMiddleware) Invoke(c *napnap.Context, next napnap.HandlerFunc) 
 				return
 			}
 
-			// unknown error
+			// unknown error.  http status code is 500 series.
 			err, ok := r.(error)
 			if !ok {
 				err = fmt.Errorf("unknow error: %v", err)
@@ -59,8 +63,10 @@ func (m *errorLogMiddleware) Invoke(c *napnap.Context, next napnap.HandlerFunc) 
 				shortMsg := fmt.Sprintf("%s %s", c.Request.Method, c.Request.URL.Path)
 				fullMessage := fmt.Sprintf("error message: %s \n request info: %s \n ", err.Error(), string(requestDump))
 				errorLog := errorLog{
-					host:         _app.Hostname,
+					host:         _app.hostname,
+					app:          _app.name,
 					domain:       c.Request.Host,
+					level:        3,
 					requestID:    requestID,
 					shortMessage: shortMsg,
 					fullMessage:  fullMessage,
@@ -106,12 +112,14 @@ func writeErrorLog(connectionString string) {
 			go func(log errorLog) {
 				str := fmt.Sprintf(`{
 				"host": "%s",
+				"_app": "%s",
 				"short_message": "%s",
 				"full_message": "%s",
+				"level": %d,
 				"_request_id": "%s",
 				"_domain": "%s",
-				"_client_ip": "%s"
-			}`, log.host, log.shortMessage, log.fullMessage, log.requestID, log.domain, log.clientIP)
+				"_client_ip": "%s"				
+			}`, log.host, log.app, log.shortMessage, log.fullMessage, log.level, log.requestID, log.domain, log.clientIP)
 				payload := []byte(str)
 				payload = append(payload, empty) // when we use tcp, we need to add null byte in the end.
 				conn.Write(payload)

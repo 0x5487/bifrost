@@ -33,18 +33,19 @@ func (am *accessLogMiddleware) Invoke(c *napnap.Context, next napnap.HandlerFunc
 	startTime := time.Now()
 	next(c)
 	duration := time.Since(startTime)
-
 	clientIP := getClientIP(c.RemoteIPAddress())
 	requestID := c.MustGet("request-id").(string)
 	shortMsg := fmt.Sprintf("%s %s", c.Request.Method, c.Request.URL.Path)
+	userAgnet := c.RequestHeader("User-Agent")
 	accessLog := accessLog{
-		host:          _app.Hostname,
+		host:          _app.hostname,
 		shortMessage:  shortMsg,
 		requestID:     requestID,
 		domain:        c.Request.Host,
 		status:        c.Writer.Status(),
 		contentLength: c.Writer.ContentLength(),
 		clientIP:      clientIP,
+		userAgent:     userAgnet,
 		duration:      duration.String(),
 	}
 
@@ -106,9 +107,10 @@ func writeAccessLog(connectionString string) {
 				"_domain": "%s",
 				"_status": %d,
 				"_content_length" : %d,
+				"_user_agent": "%s"
 				"_client_ip": "%s",
 				"_duration": "%s"
-			}`, log.host, log.shortMessage, log.fullMessage, log.requestID, log.domain, log.status, log.contentLength, log.clientIP, log.duration)
+			}`, log.host, log.shortMessage, log.fullMessage, log.requestID, log.domain, log.status, log.contentLength, log.userAgent, log.clientIP, log.duration)
 				payload := []byte(str)
 				payload = append(payload, empty) // when we use tcp, we need to add null byte in the end.
 				conn.Write(payload)
