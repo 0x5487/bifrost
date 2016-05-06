@@ -12,12 +12,12 @@ import (
 
 type errorLog struct {
 	Host         string `json:"host"`
-	App          string `json:"_app"`
-	Domain       string `json:"_domain"`
-	RequestID    string `json:"_request_id"`
-	Level        int    `json:"_level"`
+	Level        int    `json:"level"`
 	ShortMessage string `json:"short_message"`
 	FullMessage  string `json:"full_message"`
+	RequestID    string `json:"_request_id"`
+	App          string `json:"_app"`
+	Domain       string `json:"_domain"`
 	ClientIP     string `json:"_client_ip"`
 }
 
@@ -39,7 +39,7 @@ func (m *errorLogMiddleware) Invoke(c *napnap.Context, next napnap.HandlerFunc) 
 			appError, ok := r.(AppError)
 			if ok {
 				c.Set("error", appError.Message)
-				if appError.ErrorCode == "NOT_FOUND" {
+				if appError.ErrorCode == "not_found" {
 					c.JSON(404, appError)
 					return
 				}

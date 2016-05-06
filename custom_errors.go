@@ -16,7 +16,7 @@ func (cem *customErrorsMiddleware) Invoke(c *napnap.Context, next napnap.Handler
 		statusCode := code.(int)
 		if statusCode == 500 {
 			appError := AppError{
-				ErrorCode: "UNKNOWN_ERROR",
+				ErrorCode: "unknown_error",
 				Message:   "An unknown error has occurred.",
 			}
 			c.JSON(500, appError)

@@ -69,7 +69,7 @@ func (cs *ConsumerMemStore) GetByUsername(app string, username string) (*Consume
 
 func (cs *ConsumerMemStore) Insert(consumer *Consumer) error {
 	if len(consumer.App) == 0 {
-		return AppError{ErrorCode: "INVALID_DATA", Message: "app filed was invalid."}
+		return AppError{ErrorCode: "invalid_data", Message: "app filed was invalid."}
 	}
 	consumer.ID = uuid.NewV4().String()
 	now := time.Now().UTC()
@@ -83,7 +83,7 @@ func (cs *ConsumerMemStore) Insert(consumer *Consumer) error {
 
 func (cs *ConsumerMemStore) Update(consumer *Consumer) error {
 	if len(consumer.ID) == 0 {
-		return AppError{ErrorCode: "INVALID_DATA", Message: "app filed was invalid."}
+		return AppError{ErrorCode: "invalid_data", Message: "app filed was invalid."}
 	}
 	now := time.Now()
 	consumer.UpdatedAt = now
@@ -180,7 +180,7 @@ func (cm *consumerMongo) GetByUsername(app string, username string) (*Consumer, 
 
 func (cm *consumerMongo) Insert(consumer *Consumer) error {
 	if len(consumer.App) == 0 {
-		return AppError{ErrorCode: "INVALID_DATA", Message: "app filed was invalid."}
+		return AppError{ErrorCode: "invalid_data", Message: "app filed was invalid."}
 	}
 	consumer.ID = uuid.NewV4().String()
 	now := time.Now().UTC()
@@ -197,7 +197,7 @@ func (cm *consumerMongo) Insert(consumer *Consumer) error {
 	err = c.Insert(consumer)
 	if err != nil {
 		if strings.HasPrefix(err.Error(), "E11000") {
-			return AppError{ErrorCode: "INVALID_DATA", Message: "The consumer already exists"}
+			return AppError{ErrorCode: "invalid_data", Message: "The consumer already exists"}
 		}
 		return err
 	}
@@ -206,7 +206,7 @@ func (cm *consumerMongo) Insert(consumer *Consumer) error {
 
 func (cm *consumerMongo) Update(consumer *Consumer) error {
 	if len(consumer.ID) == 0 {
-		return AppError{ErrorCode: "INVALID_DATA", Message: "app filed was invalid."}
+		return AppError{ErrorCode: "invalid_data", Message: "app filed was invalid."}
 	}
 	now := time.Now()
 	consumer.UpdatedAt = now

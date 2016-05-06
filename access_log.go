@@ -18,7 +18,7 @@ type accessLog struct {
 	Domain        string `json:"_domain"`
 	Status        int    `json:"_status"`
 	ContentLength int    `json:"_content_length"`
-	ClientIP      string `json:"shortMessage"`
+	ClientIP      string `json:"_client_ip"`
 	Duration      string `json:"_duration"`
 	UserAgent     string `json:"_userAgent"`
 }

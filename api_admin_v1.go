@@ -11,15 +11,15 @@ func upateOrCreateConsumerEndpoint(c *napnap.Context) {
 	var target Consumer
 	err := c.BindJSON(&target)
 	if err != nil {
-		panic(AppError{ErrorCode: "INVALID_DATA", Message: err.Error()})
+		panic(AppError{ErrorCode: "invalid_data", Message: err.Error()})
 	}
 
 	if len(target.Username) == 0 {
-		panic(AppError{ErrorCode: "INVALID_DATA", Message: "username field is invalid."})
+		panic(AppError{ErrorCode: "invalid_data", Message: "username field is invalid."})
 	}
 
 	if len(target.App) == 0 {
-		panic(AppError{ErrorCode: "INVALID_DATA", Message: "app field is invalid."})
+		panic(AppError{ErrorCode: "invalid_data", Message: "app field is invalid."})
 	}
 
 	consumer, err := _consumerRepo.GetByUsername(target.App, target.Username)
@@ -46,13 +46,13 @@ func getConsumerEndpoint(c *napnap.Context) {
 	consumerID := c.Param("consumer_id")
 
 	if len(consumerID) == 0 {
-		panic(AppError{ErrorCode: "NOT_FOUND", Message: "consumer was not found"})
+		panic(AppError{ErrorCode: "not_found", Message: "consumer was not found"})
 	}
 
 	consumer, err := _consumerRepo.Get(consumerID)
 	panicIf(err)
 	if consumer == nil {
-		panic(AppError{ErrorCode: "NOT_FOUND", Message: "consumer was not found"})
+		panic(AppError{ErrorCode: "not_found", Message: "consumer was not found"})
 	}
 
 	c.JSON(200, consumer)
@@ -71,13 +71,13 @@ func deletedConsumerEndpoint(c *napnap.Context) {
 	consumerID := c.Param("consumer_id")
 
 	if len(consumerID) == 0 {
-		panic(AppError{ErrorCode: "NOT_FOUND", Message: "consumer was not found"})
+		panic(AppError{ErrorCode: "not_found", Message: "consumer was not found"})
 	}
 
 	consumer, err := _consumerRepo.Get(consumerID)
 	panicIf(err)
 	if consumer == nil {
-		panic(AppError{ErrorCode: "NOT_FOUND", Message: "consumer was not found"})
+		panic(AppError{ErrorCode: "not_found", Message: "consumer was not found"})
 	}
 
 	err = _consumerRepo.Delete(consumerID)
@@ -89,13 +89,13 @@ func getTokenEndpoint(c *napnap.Context) {
 	key := c.Param("key")
 
 	if len(key) == 0 {
-		panic(AppError{ErrorCode: "NOT_FOUND", Message: "key was not found"})
+		panic(AppError{ErrorCode: "not_found", Message: "key was not found"})
 	}
 
 	token, err := _tokenRepo.Get(key)
 	panicIf(err)
 	if token == nil {
-		panic(AppError{ErrorCode: "NOT_FOUND", Message: "token was not found"})
+		panic(AppError{ErrorCode: "not_found", Message: "token was not found"})
 	}
 
 	c.JSON(200, token)
@@ -121,17 +121,17 @@ func createTokenEndpoint(c *napnap.Context) {
 	var target Token
 	err := c.BindJSON(&target)
 	if err != nil {
-		panic(AppError{ErrorCode: "INVALID_DATA", Message: err.Error()})
+		panic(AppError{ErrorCode: "invalid_data", Message: err.Error()})
 	}
 
 	if len(target.ConsumerID) == 0 {
-		panic(AppError{ErrorCode: "INVALID_DATA", Message: "consumer_id field was invalid."})
+		panic(AppError{ErrorCode: "invalid_data", Message: "consumer_id field was invalid."})
 	}
 
 	consumer, err := _consumerRepo.Get(target.ConsumerID)
 	panicIf(err)
 	if consumer == nil {
-		panic(AppError{ErrorCode: "NOT_FOUND", Message: "consumer was not found."})
+		panic(AppError{ErrorCode: "not_found", Message: "consumer was not found."})
 	}
 
 	if len(target.Key) == 0 {
@@ -143,7 +143,7 @@ func createTokenEndpoint(c *napnap.Context) {
 		target.Expiration = now.Add(time.Duration(_config.Token.Timeout) * time.Minute)
 	} else {
 		if now.After(target.Expiration) {
-			panic(AppError{ErrorCode: "INVALID_DATA", Message: "expiration field was invalid."})
+			panic(AppError{ErrorCode: "invalid_data", Message: "expiration field was invalid."})
 		}
 	}
 
@@ -156,7 +156,7 @@ func updateTokensEndpoint(c *napnap.Context) {
 	var tokens []Token
 	err := c.BindJSON(&tokens)
 	if err != nil {
-		panic(AppError{ErrorCode: "INVALID_DATA", Message: err.Error()})
+		panic(AppError{ErrorCode: "invalid_data", Message: err.Error()})
 	}
 	if len(tokens) == 0 {
 		c.SetStatus(204)
@@ -172,13 +172,13 @@ func deleteTokenEndpoint(c *napnap.Context) {
 	key := c.Param("key")
 
 	if len(key) == 0 {
-		panic(AppError{ErrorCode: "NOT_FOUND", Message: "token was not found"})
+		panic(AppError{ErrorCode: "not_found", Message: "token was not found"})
 	}
 
 	token, err := _tokenRepo.Get(key)
 	panicIf(err)
 	if token == nil {
-		panic(AppError{ErrorCode: "NOT_FOUND", Message: "token was not found"})
+		panic(AppError{ErrorCode: "not_found", Message: "token was not found"})
 	}
 
 	err = _tokenRepo.Delete(key)
@@ -199,7 +199,7 @@ func deleteTokensEndpoint(c *napnap.Context) {
 	}
 
 	if len(tokens) == 0 {
-		panic(AppError{ErrorCode: "NOT_FOUND", Message: "tokens were not found"})
+		panic(AppError{ErrorCode: "not_found", Message: "tokens were not found"})
 	}
 
 	// delete all token by consumer id
