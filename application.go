@@ -69,3 +69,12 @@ func (e AppError) Error() string {
 type ApiCount struct {
 	Count int `json:"count"`
 }
+
+func reload() *apiStore {
+	apis, err := _apiRepo.GetAll()
+	panicIf(err)
+	apiStore := &apiStore{
+		data: apis,
+	}
+	return apiStore
+}

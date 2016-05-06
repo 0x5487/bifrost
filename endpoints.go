@@ -207,6 +207,96 @@ func deleteTokensEndpoint(c *napnap.Context) {
 	c.SetStatus(204)
 }
 
+func createAPIEndpoint(c *napnap.Context) {
+	var target Api
+	err := c.BindJSON(&target)
+	if err != nil {
+		panic(AppError{ErrorCode: "invalid_data", Message: err.Error()})
+	}
+
+	if len(target.Name) == 0 {
+		panic(AppError{ErrorCode: "invalid_data", Message: "name field can't be empty or null."})
+	}
+
+	api, err := _apiRepo.GetByName(target.Name)
+	panicIf(err)
+
+	if api != nil {
+		panic(AppError{ErrorCode: "invalid_data", Message: "api already exists."})
+	}
+
+	err = _apiRepo.Insert(&target)
+	panicIf(err)
+
+	c.JSON(201, target)
+}
+
+func getAPIEndpoint(c *napnap.Context) {
+	apiID := c.Param("api_id")
+	api, err := _apiRepo.Get(apiID)
+	panicIf(err)
+
+	if api == nil {
+		panic(AppError{ErrorCode: "not_found", Message: "api was not found"})
+	}
+
+	c.JSON(200, api)
+}
+
+func listAPIEndpoint(c *napnap.Context) {
+	apis, err := _apiRepo.GetAll()
+	panicIf(err)
+
+	if apis == nil {
+		c.JSON(200, []Api{})
+		return
+	}
+	c.JSON(200, apis)
+}
+
+func updateAPIEndpoint(c *napnap.Context) {
+	apiID := c.Param("api_id")
+	api, err := _apiRepo.Get(apiID)
+	panicIf(err)
+
+	if api == nil {
+		panic(AppError{ErrorCode: "not_found", Message: "api was not found"})
+	}
+
+	var target Api
+	err = c.BindJSON(&target)
+	if err != nil {
+		panic(AppError{ErrorCode: "invalid_data", Message: err.Error()})
+	}
+
+	target.ID = apiID
+	target.CreatedAt = api.CreatedAt
+
+	err = _apiRepo.Update(&target)
+	panicIf(err)
+
+	c.JSON(200, api)
+}
+
+func deleteAPIEndpoint(c *napnap.Context) {
+	apiID := c.Param("api_id")
+	api, err := _apiRepo.Get(apiID)
+	panicIf(err)
+
+	if api == nil {
+		panic(AppError{ErrorCode: "not_found", Message: "api was not found"})
+	}
+
+	err = _apiRepo.Delete(apiID)
+	panicIf(err)
+	c.SetStatus(204)
+}
+
+func reloadEndpoint(c *napnap.Context) {
+	_apis = reload()
+	c.SetStatus(204)
+}
+
 func getStatus(c *napnap.Context) {
 	c.JSON(200, _status)
 }

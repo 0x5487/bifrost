@@ -54,7 +54,6 @@ func newProxy() *proxy {
 }
 
 func (p *proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
-	var api *Api
 	requestHost := strings.ToLower(c.Request.Host)
 	requestPath := strings.ToLower(c.Request.URL.Path)
 
@@ -64,7 +63,10 @@ func (p *proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	consumer := c.MustGet("consumer").(Consumer)
 
 	// find api entry which match the request.
-	for _, apiEntry := range _config.Apis {
+	_apis.RLock()
+	defer _apis.RUnlock()
+	var api *Api
+	for _, apiEntry := range _apis.data {
 		// ensure request host is match
 		if apiEntry.RequestHost != "*" && !strings.EqualFold(apiEntry.RequestHost, requestHost) {
 			continue
@@ -82,7 +84,7 @@ func (p *proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 			c.SetStatus(401)
 			return
 		}
-		api = &apiEntry
+		api = apiEntry
 		break
 	}
 

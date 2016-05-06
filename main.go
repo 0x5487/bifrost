@@ -14,13 +14,15 @@ import (
 )
 
 var (
+	_app            *application
 	_config         Configuration
 	_logger         *logger
 	_consumerRepo   ConsumerRepository
 	_tokenRepo      TokenRepository
+	_apiRepo        ApiRepository
 	_status         *status
 	_loggerMongo    *loggerMongo
-	_app            *application
+	_apis           *apiStore
 	_accessLogsChan chan accessLog
 	_errorLogsChan  chan errorLog
 )
@@ -46,11 +48,6 @@ func init() {
 	err = yaml.Unmarshal(file, &_config)
 	if err != nil {
 		log.Fatalf("config error: %v", err)
-	}
-
-	apis := _config.Apis
-	if len(apis) == 0 {
-		log.Fatalf("config error: no api entries were found.")
 	}
 
 	err = _config.isValid()
@@ -79,9 +76,18 @@ func init() {
 		if err != nil {
 			panic(err)
 		}
+
+		_apiRepo, err = newAPIMongo(_config.Data.ConnectionString)
+		if err != nil {
+			panic(err)
+		}
 	}
+
 	_app = newApplication()
 	_logger.debugf("hostname: %v", _app.hostname)
+
+	// reload
+	_apis = reload()
 }
 
 func main() {
@@ -138,7 +144,7 @@ func main() {
 	nap.Use(newProxy())
 	nap.UseFunc(notFound)
 
-	// admin api
+	// admin endpoints
 	adminNap := napnap.New()
 	adminNap.Use(napnap.NewHealth())
 	adminNap.Use(newErrorLogMiddleware(false))
@@ -147,20 +153,28 @@ func main() {
 
 	adminRouter := napnap.NewRouter()
 	adminRouter.Get("/status", getStatus)
+	adminRouter.Put("/reload", reloadEndpoint)
 
-	// consumer api
+	// consumer endpoints
 	adminRouter.Get("/v1/consumers/count", getConsumerCountEndpoint)
 	adminRouter.Get("/v1/consumers/:consumer_id", getConsumerEndpoint)
 	adminRouter.Delete("/v1/consumers/:consumer_id", deletedConsumerEndpoint)
 	adminRouter.Put("/v1/consumers", upateOrCreateConsumerEndpoint)
 
-	// token api
+	// token endpoints
 	adminRouter.Get("/v1/tokens/:key", getTokenEndpoint)
 	adminRouter.Delete("/v1/tokens/:key", deleteTokenEndpoint)
 	adminRouter.Get("/v1/tokens", getTokensEndpoint)
 	adminRouter.Post("/v1/tokens", createTokenEndpoint)
 	adminRouter.Put("/v1/tokens", updateTokensEndpoint)
 	adminRouter.Delete("/v1/tokens", deleteTokensEndpoint)
+
+	// api endpoints
+	adminRouter.Get("/v1/apis/:api_id", getAPIEndpoint)
+	adminRouter.Delete("/v1/apis/:api_id", deleteAPIEndpoint)
+	adminRouter.Put("/v1/apis/:api_id", updateAPIEndpoint)
+	adminRouter.Get("/v1/apis", listAPIEndpoint)
+	adminRouter.Post("/v1/apis", createAPIEndpoint)
 
 	adminNap.Use(adminRouter)
 	adminNap.UseFunc(notFound)
