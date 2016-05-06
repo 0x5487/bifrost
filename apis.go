@@ -2,7 +2,6 @@ package main
 
 import (
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/satori/go.uuid"
@@ -79,17 +78,6 @@ func (p Policy) isMatch(kind string, consumer Consumer) bool {
 		}
 	}
 	return false
-}
-
-type apiStore struct {
-	sync.RWMutex
-	data []*Api
-}
-
-func (as *apiStore) replace(data []*Api) {
-	as.Lock()
-	as.data = data
-	as.Unlock()
 }
 
 type ApiRepository interface {

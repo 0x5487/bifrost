@@ -63,10 +63,8 @@ func (p *proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	consumer := c.MustGet("consumer").(Consumer)
 
 	// find api entry which match the request.
-	_apis.RLock()
-	defer _apis.RUnlock()
 	var api *Api
-	for _, apiEntry := range _apis.data {
+	for _, apiEntry := range _apis {
 		// ensure request host is match
 		if apiEntry.RequestHost != "*" && !strings.EqualFold(apiEntry.RequestHost, requestHost) {
 			continue

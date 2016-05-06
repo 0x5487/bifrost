@@ -22,7 +22,7 @@ var (
 	_apiRepo        ApiRepository
 	_status         *status
 	_loggerMongo    *loggerMongo
-	_apis           *apiStore
+	_apis           []*Api
 	_accessLogsChan chan accessLog
 	_errorLogsChan  chan errorLog
 )

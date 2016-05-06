@@ -70,11 +70,8 @@ type ApiCount struct {
 	Count int `json:"count"`
 }
 
-func reload() *apiStore {
+func reload() []*Api {
 	apis, err := _apiRepo.GetAll()
 	panicIf(err)
-	apiStore := &apiStore{
-		data: apis,
-	}
-	return apiStore
+	return apis
 }
