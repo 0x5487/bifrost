@@ -27,7 +27,7 @@ var (
 	_loggerMongo    *loggerMongo
 	_services       []*service
 	_accessLogsChan chan accessLog
-	_errorLogsChan  chan errorLog
+	_errorLogsChan  chan applocationLog
 )
 
 func init() {
@@ -110,7 +110,7 @@ func main() {
 		_accessLogsChan = make(chan accessLog, 20000)
 		nap.Use(newAccessLogMiddleware())
 		go writeAccessLog(_config.Logs.AccessLog.ConnectionString)
-		_logger.debugf("access log were enabled and connection string are %s", _config.Logs.AccessLog.ConnectionString)
+		_logger.debugf("access log were enabled and connection string is %s", _config.Logs.AccessLog.ConnectionString)
 	}
 
 	// set custom errors
@@ -121,9 +121,9 @@ func main() {
 	// set error logger
 	nap.Use(newErrorLogMiddleware(true))
 	if _config.Logs.ApplicationLog.Type == "graylog" && len(_config.Logs.ApplicationLog.ConnectionString) > 0 {
-		_errorLogsChan = make(chan errorLog, 10000)
-		go writeErrorLog(_config.Logs.ApplicationLog.ConnectionString)
-		_logger.debugf("error log were enabled and connection string are string are %s", _config.Logs.ApplicationLog.ConnectionString)
+		_errorLogsChan = make(chan applocationLog, 10000)
+		go writeApplicationLog(_config.Logs.ApplicationLog.ConnectionString)
+		_logger.debugf("error log were enabled and connection string is %s", _config.Logs.ApplicationLog.ConnectionString)
 	}
 
 	_status = newStatusMiddleware()

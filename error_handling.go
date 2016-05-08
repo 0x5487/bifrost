@@ -1,27 +1,11 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"net"
 	"net/http/httputil"
-	"net/url"
-	"strings"
-	"time"
 
 	"github.com/jasonsoft/napnap"
 )
-
-type errorLog struct {
-	Host         string `json:"host"`
-	Level        int    `json:"level"`
-	ShortMessage string `json:"short_message"`
-	FullMessage  string `json:"full_message"`
-	RequestID    string `json:"_request_id"`
-	App          string `json:"_app"`
-	Domain       string `json:"_domain"`
-	ClientIP     string `json:"_client_ip"`
-}
 
 type errorLogMiddleware struct {
 	enableErrorLog bool
@@ -65,7 +49,7 @@ func (m *errorLogMiddleware) Invoke(c *napnap.Context, next napnap.HandlerFunc) 
 				requestDump, err := httputil.DumpRequest(c.Request, true)
 				shortMsg := fmt.Sprintf("%s %s", c.Request.Method, c.Request.URL.Path)
 				fullMessage := fmt.Sprintf("error message: %s \n request info: %s \n ", err.Error(), string(requestDump))
-				errorLog := errorLog{
+				errorLog := applocationLog{
 					Host:         _app.hostname,
 					App:          _app.name,
 					Domain:       c.Request.Host,
@@ -85,46 +69,4 @@ func (m *errorLogMiddleware) Invoke(c *napnap.Context, next napnap.HandlerFunc) 
 		}
 	}()
 	next(c)
-}
-
-func writeErrorLog(connectionString string) {
-	url, err := url.Parse(connectionString)
-	panicIf(err)
-	var conn net.Conn
-	if strings.EqualFold(url.Scheme, "tcp") {
-		conn, err = net.Dial("tcp", url.Host)
-		panicIf(err)
-	} else {
-		conn, err = net.Dial("udp", url.Host)
-		panicIf(err)
-	}
-
-	// check connection status every 5 seconds
-	var emptyByteArray []byte
-	go func() {
-		for {
-			_, err = conn.Write(emptyByteArray)
-			if err != nil {
-				newConn, err := net.Dial("tcp", url.Host)
-				if err == nil {
-					conn = newConn
-				}
-			}
-			time.Sleep(5 * time.Second)
-		}
-	}()
-
-	var empty byte
-	for {
-		select {
-		case logElement := <-_errorLogsChan:
-			go func(log errorLog) {
-				payload, _ := json.Marshal(log)
-				payload = append(payload, empty) // when we use tcp, we need to add null byte in the end.
-				conn.Write(payload)
-			}(logElement)
-		default:
-			time.Sleep(5 * time.Second)
-		}
-	}
 }

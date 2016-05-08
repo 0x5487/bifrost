@@ -1,8 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"net"
+	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/jasonsoft/napnap"
@@ -86,4 +90,57 @@ func reload() []*service {
 		}
 	}
 	return services
+}
+
+type applocationLog struct {
+	Host         string `json:"host"`
+	Level        int    `json:"level"`
+	ShortMessage string `json:"short_message"`
+	FullMessage  string `json:"full_message"`
+	RequestID    string `json:"_request_id"`
+	App          string `json:"_app"`
+	Domain       string `json:"_domain"`
+	ClientIP     string `json:"_client_ip"`
+}
+
+func writeApplicationLog(connectionString string) {
+	url, err := url.Parse(connectionString)
+	panicIf(err)
+	var conn net.Conn
+	if strings.EqualFold(url.Scheme, "tcp") {
+		conn, err = net.Dial("tcp", url.Host)
+		panicIf(err)
+	} else {
+		conn, err = net.Dial("udp", url.Host)
+		panicIf(err)
+	}
+
+	// check connection status every 5 seconds
+	var emptyByteArray []byte
+	go func() {
+		for {
+			_, err = conn.Write(emptyByteArray)
+			if err != nil {
+				newConn, err := net.Dial("tcp", url.Host)
+				if err == nil {
+					conn = newConn
+				}
+			}
+			time.Sleep(5 * time.Second)
+		}
+	}()
+
+	var empty byte
+	for {
+		select {
+		case logElement := <-_errorLogsChan:
+			go func(log applocationLog) {
+				payload, _ := json.Marshal(log)
+				payload = append(payload, empty) // when we use tcp, we need to add null byte in the end.
+				conn.Write(payload)
+			}(logElement)
+		default:
+			time.Sleep(5 * time.Second)
+		}
+	}
 }
