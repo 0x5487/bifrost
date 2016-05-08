@@ -70,8 +70,20 @@ type ApiCount struct {
 	Count int `json:"count"`
 }
 
-func reload() []*Api {
-	apis, err := _apiRepo.GetAll()
+func reload() []*service {
+	// stop all health checking
+	for _, svc := range _services {
+		for _, upstream := range svc.Upstreams {
+			upstream.stopChecking()
+		}
+	}
+
+	services, err := _serviceRepo.GetAll()
 	panicIf(err)
-	return apis
+	for _, svc := range services {
+		for _, upstream := range svc.Upstreams {
+			upstream.startChecking()
+		}
+	}
+	return services
 }

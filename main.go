@@ -4,10 +4,12 @@ import (
 	"flag"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/jasonsoft/napnap"
 	"gopkg.in/yaml.v2"
@@ -15,14 +17,15 @@ import (
 
 var (
 	_app            *application
+	_httpClient     *http.Client
 	_config         Configuration
 	_logger         *logger
 	_consumerRepo   ConsumerRepository
 	_tokenRepo      TokenRepository
-	_apiRepo        ApiRepository
+	_serviceRepo    ServiceRepository
 	_status         *status
 	_loggerMongo    *loggerMongo
-	_apis           []*Api
+	_services       []*service
 	_accessLogsChan chan accessLog
 	_errorLogsChan  chan errorLog
 )
@@ -41,6 +44,13 @@ func init() {
 	file, err := ioutil.ReadFile(configPath)
 	if err != nil {
 		log.Fatalf("file error: %v", err)
+	}
+
+	_httpClient = &http.Client{
+		Transport: &http.Transport{
+			MaxIdleConnsPerHost: 20,
+		},
+		Timeout: time.Duration(30) * time.Second,
 	}
 
 	// parse yaml
@@ -77,7 +87,7 @@ func init() {
 			panic(err)
 		}
 
-		_apiRepo, err = newAPIMongo(_config.Data.ConnectionString)
+		_serviceRepo, err = newAPIMongo(_config.Data.ConnectionString)
 		if err != nil {
 			panic(err)
 		}
@@ -87,7 +97,7 @@ func init() {
 	_logger.debugf("hostname: %v", _app.hostname)
 
 	// reload
-	_apis = reload()
+	_services = reload()
 }
 
 func main() {
@@ -169,12 +179,16 @@ func main() {
 	adminRouter.Put("/v1/tokens", updateTokensEndpoint)
 	adminRouter.Delete("/v1/tokens", deleteTokensEndpoint)
 
-	// api endpoints
-	adminRouter.Get("/v1/apis/:api_id", getAPIEndpoint)
-	adminRouter.Delete("/v1/apis/:api_id", deleteAPIEndpoint)
-	adminRouter.Put("/v1/apis/:api_id", updateAPIEndpoint)
-	adminRouter.Get("/v1/apis", listAPIEndpoint)
-	adminRouter.Post("/v1/apis", createAPIEndpoint)
+	// service endpoints
+	adminRouter.Get("/v1/services/:service_id", getServiceEndpoint)
+	adminRouter.Delete("/v1/services/:service_id", deleteServiceEndpoint)
+	adminRouter.Put("/v1/services/:service_id", updateServiceEndpoint)
+	adminRouter.Get("/v1/services", listServicesEndpoint)
+	adminRouter.Post("/v1/services", createServiceEndpoint)
+
+	// upstream endpoints
+	adminRouter.Delete("/v1/services/:service_id/upstreams/:upstream_id", unRegisterUpstreamEndpoint)
+	adminRouter.Post("/v1/services/:service_id/upstreams", registerUpstreamEndpoint)
 
 	adminNap.Use(adminRouter)
 	adminNap.UseFunc(notFound)

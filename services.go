@@ -1,7 +1,9 @@
 package main
 
 import (
+	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/satori/go.uuid"
@@ -10,30 +12,110 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-type Policy struct {
+type policy struct {
 	Allow string `json:"allow,omitempty" bson:"allow,omitempty"`
 	Deny  string `json:"deny,omitempty" bson:"deny,omitempty"`
 }
 
-type Api struct {
-	ID               string    `json:"id" bson:"_id"`
-	Name             string    `json:"name" bson:"name"`
-	RequestHost      string    `json:"request_host" bson:"request_host"`
-	RequestPath      string    `json:"request_path" bson:"request_path"`
-	StripRequestPath bool      `json:"strip_request_path" bson:"strip_request_path"`
-	TargetURL        string    `json:"target_url" bson:"target_url"`
-	Redirect         bool      `json:"redirect" bson:"redirect"`
-	Policies         []Policy  `json:"policies" bson:"policies"`
-	Weight           int       `json:"weight" bson:"weight"`
-	CreatedAt        time.Time `json:"created_at" bson:"created_at"`
-	UpdatedAt        time.Time `json:"updated_at" bson:"updated_at"`
+type upstream struct {
+	count          int
+	isChecking     bool
+	Name           string `json:"name" bson:"name"`
+	TargetURL      string `json:"target_url" bson:"target_url"`
+	HealthCheckURL string `json:"health_check_url" bson:"health_check_url"`
+	Status         string `json:"status"`
 }
 
-func (*Api) isValid() bool {
+func (u *upstream) startChecking() {
+	u.isChecking = true
+	go func() {
+		for u.isChecking == true {
+			time.Sleep(1 * time.Second)
+			outReq, err := http.NewRequest("GET", u.HealthCheckURL, nil)
+			if err != nil {
+				u.Status = "failed"
+				continue
+			}
+			// send to target
+			resp, err := _httpClient.Do(outReq)
+			if err != nil {
+				u.Status = "failed"
+				continue
+			}
+			defer respClose(resp.Body)
+			if resp.StatusCode == 200 {
+				u.Status = "alive"
+			}
+		}
+	}()
+}
+
+func (u *upstream) stopChecking() {
+	u.isChecking = false
+}
+
+type service struct {
+	sync.RWMutex
+	ID               string      `json:"id" bson:"_id"`
+	Name             string      `json:"name" bson:"name"`
+	RequestHost      string      `json:"request_host" bson:"request_host"`
+	RequestPath      string      `json:"request_path" bson:"request_path"`
+	StripRequestPath bool        `json:"strip_request_path" bson:"strip_request_path"`
+	Upstreams        []*upstream `json:"upstreams" bson:"upstreams"`
+	Redirect         bool        `json:"redirect" bson:"redirect"`
+	Policies         []policy    `json:"policies" bson:"policies"`
+	Weight           int         `json:"weight" bson:"weight"`
+	CreatedAt        time.Time   `json:"created_at" bson:"created_at"`
+	UpdatedAt        time.Time   `json:"updated_at" bson:"updated_at"`
+}
+
+func (s *service) askForUpstream() *upstream {
+	s.Lock()
+	defer s.Unlock()
+
+	if len(s.Upstreams) == 1 {
+		u := s.Upstreams[0]
+		if u.Status == "alive" {
+			return u
+		}
+		return nil
+	}
+
+	var active bool
+	var result *upstream
+	for _, u := range s.Upstreams {
+		if u.Status == "alive" {
+			active = true
+		}
+		if u.Status == "alive" && u.count == 0 {
+			u.count++
+			result = u
+			break
+		}
+	}
+
+	// reset count
+	if result == nil && active {
+		for _, u := range s.Upstreams {
+			u.count = 0
+		}
+		for _, u := range s.Upstreams {
+			if u.Status == "alive" && u.count == 0 {
+				u.count++
+				result = u
+				break
+			}
+		}
+	}
+
+	return result
+}
+
+func (*service) isValid() bool {
 	return true
 }
 
-func (a Api) isAllow(consumer Consumer) bool {
+func (a service) isAllow(consumer Consumer) bool {
 	for _, policy := range a.Policies {
 		if policy.isAllowPolicy() == false {
 			if policy.isMatch("deny", consumer) {
@@ -49,14 +131,14 @@ func (a Api) isAllow(consumer Consumer) bool {
 	return true
 }
 
-func (p Policy) isAllowPolicy() bool {
+func (p policy) isAllowPolicy() bool {
 	if len(p.Allow) > 0 {
 		return true
 	}
 	return false
 }
 
-func (p Policy) isMatch(kind string, consumer Consumer) bool {
+func (p policy) isMatch(kind string, consumer Consumer) bool {
 	var rule string
 	if kind == "deny" {
 		rule = strings.ToLower(p.Deny)
@@ -80,12 +162,12 @@ func (p Policy) isMatch(kind string, consumer Consumer) bool {
 	return false
 }
 
-type ApiRepository interface {
-	Get(id string) (*Api, error)
-	GetByName(name string) (*Api, error)
-	GetAll() ([]*Api, error)
-	Insert(api *Api) error
-	Update(api *Api) error
+type ServiceRepository interface {
+	Get(id string) (*service, error)
+	GetByName(name string) (*service, error)
+	GetAll() ([]*service, error)
+	Insert(api *service) error
+	Update(api *service) error
 	Delete(id string) error
 }
 
@@ -133,7 +215,7 @@ func (ams *apiMongo) newSession() (*mgo.Session, error) {
 	return mgo.Dial(ams.connectionString)
 }
 
-func (ams *apiMongo) Get(id string) (*Api, error) {
+func (ams *apiMongo) Get(id string) (*service, error) {
 	session, err := ams.newSession()
 	if err != nil {
 		return nil, err
@@ -141,7 +223,7 @@ func (ams *apiMongo) Get(id string) (*Api, error) {
 	defer session.Close()
 
 	c := session.DB("bifrost").C("apis")
-	api := Api{}
+	api := service{}
 	err = c.FindId(id).One(&api)
 	if err != nil {
 		if err.Error() == "not found" {
@@ -152,7 +234,7 @@ func (ams *apiMongo) Get(id string) (*Api, error) {
 	return &api, nil
 }
 
-func (ams *apiMongo) GetByName(name string) (*Api, error) {
+func (ams *apiMongo) GetByName(name string) (*service, error) {
 	session, err := ams.newSession()
 	if err != nil {
 		return nil, err
@@ -160,7 +242,7 @@ func (ams *apiMongo) GetByName(name string) (*Api, error) {
 	defer session.Close()
 
 	c := session.DB("bifrost").C("apis")
-	api := Api{}
+	api := service{}
 	err = c.Find(bson.M{"name": name}).One(&api)
 	if err != nil {
 		if err.Error() == "not found" {
@@ -171,7 +253,7 @@ func (ams *apiMongo) GetByName(name string) (*Api, error) {
 	return &api, nil
 }
 
-func (ams *apiMongo) GetAll() ([]*Api, error) {
+func (ams *apiMongo) GetAll() ([]*service, error) {
 	session, err := ams.newSession()
 	if err != nil {
 		return nil, err
@@ -179,7 +261,7 @@ func (ams *apiMongo) GetAll() ([]*Api, error) {
 	defer session.Close()
 
 	c := session.DB("bifrost").C("apis")
-	apis := []*Api{}
+	apis := []*service{}
 	err = c.Find(bson.M{}).Sort("-weight", "+created_at").All(&apis)
 	if err != nil {
 		if err.Error() == "not found" {
@@ -190,7 +272,7 @@ func (ams *apiMongo) GetAll() ([]*Api, error) {
 	return apis, nil
 }
 
-func (ams *apiMongo) Insert(api *Api) error {
+func (ams *apiMongo) Insert(api *service) error {
 	session, err := ams.newSession()
 	if err != nil {
 		return err
@@ -213,7 +295,7 @@ func (ams *apiMongo) Insert(api *Api) error {
 	return nil
 }
 
-func (ams *apiMongo) Update(api *Api) error {
+func (ams *apiMongo) Update(api *service) error {
 	if len(api.ID) == 0 {
 		return AppError{ErrorCode: "invalid_data", Message: "id can't be empty or null."}
 	}

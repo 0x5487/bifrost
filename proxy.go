@@ -63,18 +63,18 @@ func (p *proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	consumer := c.MustGet("consumer").(Consumer)
 
 	// find api entry which match the request.
-	var api *Api
-	for _, apiEntry := range _apis {
+	var svc *service
+	for _, svcEntry := range _services {
 		// ensure request host is match
-		if apiEntry.RequestHost != "*" && !strings.EqualFold(apiEntry.RequestHost, requestHost) {
+		if svcEntry.RequestHost != "*" && !strings.EqualFold(svcEntry.RequestHost, requestHost) {
 			continue
 		}
 		// ensure request path is match
-		if apiEntry.RequestPath != "*" && strings.HasPrefix(requestPath, apiEntry.RequestPath) == false {
+		if svcEntry.RequestPath != "*" && strings.HasPrefix(requestPath, svcEntry.RequestPath) == false {
 			continue
 		}
 		// ensure the consumer has access permission
-		if apiEntry.isAllow(consumer) == false {
+		if svcEntry.isAllow(consumer) == false {
 			if consumer.isAuthenticated() {
 				c.SetStatus(403)
 				return
@@ -82,26 +82,34 @@ func (p *proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 			c.SetStatus(401)
 			return
 		}
-		api = apiEntry
+		svc = svcEntry
 		break
 	}
 
 	// none of api enties are match
-	if api == nil {
+	if svc == nil {
 		next(c) // go to notFound middleware
 		return
 	}
 
-	_logger.debugf("api host: %s", api.RequestHost)
-	_logger.debugf("api path: %s", api.RequestPath)
+	_logger.debugf("service host: %s", svc.RequestHost)
+	_logger.debugf("service path: %s", svc.RequestPath)
 
-	// exchange url
+	// get upstream and exchange url
+	u := svc.askForUpstream()
+	if u == nil {
+		// no upstreams are available
+		c.SetStatus(503)
+		return
+	}
+	_logger.debugf("upstream: %v", u.Name)
+
 	var url string
-	if api.StripRequestPath {
-		newPath := strings.TrimPrefix(requestPath, api.RequestPath)
-		url = api.TargetURL + newPath
+	if svc.StripRequestPath {
+		newPath := strings.TrimPrefix(requestPath, svc.RequestPath)
+		url = u.TargetURL + newPath
 	} else {
-		url = api.TargetURL + requestPath
+		url = u.TargetURL + requestPath
 	}
 
 	rawQuery := c.Request.URL.RawQuery
@@ -112,7 +120,7 @@ func (p *proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	_logger.debugf("URL: %s", url)
 
 	// redirect if needed
-	if api.Redirect {
+	if svc.Redirect {
 		_logger.debug("redirect to ", url)
 		c.Redirect(301, url)
 		return

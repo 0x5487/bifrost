@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/url"
 	"time"
 
 	"github.com/jasonsoft/napnap"
@@ -207,93 +208,163 @@ func deleteTokensEndpoint(c *napnap.Context) {
 	c.SetStatus(204)
 }
 
-func createAPIEndpoint(c *napnap.Context) {
-	var target Api
+func createServiceEndpoint(c *napnap.Context) {
+	var target service
 	err := c.BindJSON(&target)
 	if err != nil {
 		panic(AppError{ErrorCode: "invalid_data", Message: err.Error()})
 	}
-
 	if len(target.Name) == 0 {
-		panic(AppError{ErrorCode: "invalid_data", Message: "name field can't be empty or null."})
+		panic(AppError{ErrorCode: "invalid_data", Message: "name field can't be empty or null"})
 	}
-
-	api, err := _apiRepo.GetByName(target.Name)
+	service, err := _serviceRepo.GetByName(target.Name)
 	panicIf(err)
-
-	if api != nil {
-		panic(AppError{ErrorCode: "invalid_data", Message: "api already exists."})
+	if service != nil {
+		panic(AppError{ErrorCode: "invalid_data", Message: "name already exists"})
 	}
 
-	err = _apiRepo.Insert(&target)
+	target.Upstreams = []*upstream{}
+	err = _serviceRepo.Insert(&target)
 	panicIf(err)
 
 	c.JSON(201, target)
 }
 
-func getAPIEndpoint(c *napnap.Context) {
-	apiID := c.Param("api_id")
-	api, err := _apiRepo.Get(apiID)
-	panicIf(err)
+func getServiceEndpoint(c *napnap.Context) {
+	serviceID := c.Param("service_id")
 
-	if api == nil {
-		panic(AppError{ErrorCode: "not_found", Message: "api was not found"})
+	var result *service
+	for _, svc := range _services {
+		if svc.ID == serviceID {
+			result = svc
+			break
+		}
+		if svc.Name == serviceID {
+			result = svc
+			break
+		}
 	}
 
-	c.JSON(200, api)
+	if result == nil {
+		panic(AppError{ErrorCode: "not_found", Message: "service was not found"})
+	}
+
+	c.JSON(200, result)
 }
 
-func listAPIEndpoint(c *napnap.Context) {
-	apis, err := _apiRepo.GetAll()
-	panicIf(err)
-
-	if apis == nil {
-		c.JSON(200, []Api{})
+func listServicesEndpoint(c *napnap.Context) {
+	if _services == nil {
+		c.JSON(200, []service{})
 		return
 	}
-	c.JSON(200, apis)
+	c.JSON(200, _services)
 }
 
-func updateAPIEndpoint(c *napnap.Context) {
-	apiID := c.Param("api_id")
-	api, err := _apiRepo.Get(apiID)
-	panicIf(err)
-
-	if api == nil {
-		panic(AppError{ErrorCode: "not_found", Message: "api was not found"})
-	}
-
-	var target Api
-	err = c.BindJSON(&target)
+func updateServiceEndpoint(c *napnap.Context) {
+	serviceID := c.Param("service_id")
+	var target service
+	err := c.BindJSON(&target)
 	if err != nil {
 		panic(AppError{ErrorCode: "invalid_data", Message: err.Error()})
 	}
 
-	target.ID = apiID
-	target.CreatedAt = api.CreatedAt
-
-	err = _apiRepo.Update(&target)
+	service, err := _serviceRepo.Get(serviceID)
 	panicIf(err)
-
-	c.JSON(200, api)
-}
-
-func deleteAPIEndpoint(c *napnap.Context) {
-	apiID := c.Param("api_id")
-	api, err := _apiRepo.Get(apiID)
-	panicIf(err)
-
-	if api == nil {
-		panic(AppError{ErrorCode: "not_found", Message: "api was not found"})
+	if service == nil {
+		service, err = _serviceRepo.GetByName(serviceID)
+	}
+	if service == nil {
+		panic(AppError{ErrorCode: "not_found", Message: "service was not found"})
 	}
 
-	err = _apiRepo.Delete(apiID)
+	target.ID = serviceID
+	target.CreatedAt = service.CreatedAt
+	err = _serviceRepo.Update(&target)
+	panicIf(err)
+	c.JSON(200, service)
+}
+
+func deleteServiceEndpoint(c *napnap.Context) {
+	serviceID := c.Param("service_id")
+	service, err := _serviceRepo.Get(serviceID)
+	panicIf(err)
+	if service == nil {
+		service, err = _serviceRepo.GetByName(serviceID)
+	}
+	if service == nil {
+		panic(AppError{ErrorCode: "not_found", Message: "service was not found"})
+	}
+	err = _serviceRepo.Delete(serviceID)
 	panicIf(err)
 	c.SetStatus(204)
 }
 
+func registerUpstreamEndpoint(c *napnap.Context) {
+	var target upstream
+	err := c.BindJSON(&target)
+	if err != nil {
+		panic(AppError{ErrorCode: "invalid_data", Message: err.Error()})
+	}
+
+	serviceID := c.Param("service_id")
+	service, err := _serviceRepo.Get(serviceID)
+	panicIf(err)
+	if service == nil {
+		service, err = _serviceRepo.GetByName(serviceID)
+	}
+	if service == nil {
+		panic(AppError{ErrorCode: "not_found", Message: "service was not found"})
+	}
+
+	upstreamID := target.Name
+	for _, upS := range service.Upstreams {
+		if upS.Name == upstreamID {
+			panic(AppError{ErrorCode: "invalid_data", Message: "name already exists"})
+		}
+	}
+
+	// verify input
+	_, err = url.Parse(target.TargetURL)
+	if err != nil {
+		panic(AppError{ErrorCode: "invalid_data", Message: "target_url field is invalid"})
+	}
+	_, err = url.Parse(target.HealthCheckURL)
+	if err != nil {
+		panic(AppError{ErrorCode: "invalid_data", Message: "health_check_url field is invalid"})
+	}
+	service.Upstreams = append(service.Upstreams, &target)
+	err = _serviceRepo.Update(service)
+	panicIf(err)
+	_services = reload()
+	c.JSON(201, target)
+}
+
+func unRegisterUpstreamEndpoint(c *napnap.Context) {
+	serviceID := c.Param("service_id")
+	service, err := _serviceRepo.Get(serviceID)
+	panicIf(err)
+	if service == nil {
+		service, err = _serviceRepo.GetByName(serviceID)
+	}
+	if service == nil {
+		panic(AppError{ErrorCode: "not_found", Message: "service was not found"})
+	}
+
+	upstreamID := c.Param("upstream_id")
+	for i, upS := range service.Upstreams {
+		if upS.Name == upstreamID {
+			// remove upstream
+			service.Upstreams = append(service.Upstreams[:i], service.Upstreams[i+1:]...)
+			err = _serviceRepo.Update(service)
+			panicIf(err)
+		}
+	}
+	_services = reload()
+	c.SetStatus(204)
+}
+
 func reloadEndpoint(c *napnap.Context) {
-	_apis = reload()
+	_services = reload()
 	c.SetStatus(204)
 }
 
