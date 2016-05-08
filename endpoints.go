@@ -45,13 +45,16 @@ func upateOrCreateConsumerEndpoint(c *napnap.Context) {
 
 func getConsumerEndpoint(c *napnap.Context) {
 	consumerID := c.Param("consumer_id")
-
-	if len(consumerID) == 0 {
-		panic(AppError{ErrorCode: "not_found", Message: "consumer was not found"})
+	app := c.Query("app")
+	if len(app) == 0 {
+		panic(AppError{ErrorCode: "invalid_data", Message: "app field was missing or empty"})
 	}
-
 	consumer, err := _consumerRepo.Get(consumerID)
 	panicIf(err)
+	if consumer == nil {
+		consumer, err = _consumerRepo.GetByUsername(app, consumerID)
+		panicIf(err)
+	}
 	if consumer == nil {
 		panic(AppError{ErrorCode: "not_found", Message: "consumer was not found"})
 	}
@@ -60,7 +63,11 @@ func getConsumerEndpoint(c *napnap.Context) {
 }
 
 func getConsumerCountEndpoint(c *napnap.Context) {
-	count, err := _consumerRepo.Count()
+	app := c.Query("app")
+	if len(app) == 0 {
+		panic(AppError{ErrorCode: "invalid_data", Message: "app field was missing or empty"})
+	}
+	count, err := _consumerRepo.Count(app)
 	panicIf(err)
 	result := ApiCount{
 		Count: count,
@@ -70,18 +77,22 @@ func getConsumerCountEndpoint(c *napnap.Context) {
 
 func deletedConsumerEndpoint(c *napnap.Context) {
 	consumerID := c.Param("consumer_id")
-
-	if len(consumerID) == 0 {
-		panic(AppError{ErrorCode: "not_found", Message: "consumer was not found"})
+	app := c.Query("app")
+	if len(app) == 0 {
+		panic(AppError{ErrorCode: "invalid_data", Message: "app field was missing or empty"})
 	}
 
 	consumer, err := _consumerRepo.Get(consumerID)
 	panicIf(err)
 	if consumer == nil {
+		consumer, err = _consumerRepo.GetByUsername(app, consumerID)
+		panicIf(err)
+	}
+	if consumer == nil {
 		panic(AppError{ErrorCode: "not_found", Message: "consumer was not found"})
 	}
 
-	err = _consumerRepo.Delete(consumerID)
+	err = _consumerRepo.Delete(consumer.ID)
 	panicIf(err)
 	c.JSON(204, nil)
 }

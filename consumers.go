@@ -34,7 +34,7 @@ type ConsumerRepository interface {
 	Insert(consumer *Consumer) error
 	Update(consumer *Consumer) error
 	Delete(id string) error
-	Count() (int, error)
+	Count(app string) (int, error)
 }
 
 type ConsumerMemStore struct {
@@ -100,7 +100,7 @@ func (cs *ConsumerMemStore) Delete(id string) error {
 	return nil
 }
 
-func (cs *ConsumerMemStore) Count() (int, error) {
+func (cs *ConsumerMemStore) Count(app string) (int, error) {
 	cs.RLock()
 	defer cs.RUnlock()
 	return len(cs.data), nil
@@ -242,7 +242,7 @@ func (cm *consumerMongo) Delete(id string) error {
 	return nil
 }
 
-func (cm *consumerMongo) Count() (int, error) {
+func (cm *consumerMongo) Count(app string) (int, error) {
 	session, err := cm.newSession()
 	if err != nil {
 		return 0, err
@@ -250,7 +250,7 @@ func (cm *consumerMongo) Count() (int, error) {
 	defer session.Close()
 
 	c := session.DB("bifrost").C("consumers")
-	count, err := c.Count()
+	count, err := c.Find(bson.M{"app": app}).Count()
 	if err != nil {
 		return 0, err
 	}
