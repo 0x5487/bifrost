@@ -181,7 +181,7 @@ func newAPIMongo(connectionString string) (*serviceMongo, error) {
 		panic(err)
 	}
 	defer session.Close()
-	c := session.DB("bifrost").C("service")
+	c := session.DB("bifrost").C("services")
 
 	// create index
 	nameIdx := mgo.Index{
