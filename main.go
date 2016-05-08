@@ -24,7 +24,6 @@ var (
 	_tokenRepo      TokenRepository
 	_serviceRepo    ServiceRepository
 	_status         *status
-	_loggerMongo    *loggerMongo
 	_services       []*service
 	_accessLogsChan chan accessLog
 	_errorLogsChan  chan applocationLog

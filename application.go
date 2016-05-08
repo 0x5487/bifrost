@@ -75,21 +75,34 @@ type ApiCount struct {
 }
 
 func reload() []*service {
+	services, err := _serviceRepo.GetAll()
+	panicIf(err)
 	// stop all health checking
 	for _, svc := range _services {
 		for _, upstream := range svc.Upstreams {
 			upstream.stopChecking()
 		}
 	}
-
-	services, err := _serviceRepo.GetAll()
-	panicIf(err)
 	for _, svc := range services {
 		for _, upstream := range svc.Upstreams {
 			upstream.startChecking()
 		}
 	}
 	return services
+}
+
+func reloadUpstreams() {
+	for _, svc := range _services {
+		newSvc, err := _serviceRepo.Get(svc.ID)
+		panicIf(err)
+		for _, upstream := range svc.Upstreams {
+			upstream.stopChecking()
+		}
+		svc.Upstreams = newSvc.Upstreams
+		for _, upstream := range svc.Upstreams {
+			upstream.startChecking()
+		}
+	}
 }
 
 type applocationLog struct {

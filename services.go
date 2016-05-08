@@ -131,6 +131,7 @@ func (a service) isAllow(consumer Consumer) bool {
 	return true
 }
 
+
 func (p policy) isAllowPolicy() bool {
 	if len(p.Allow) > 0 {
 		return true

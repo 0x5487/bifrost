@@ -305,7 +305,7 @@ func deleteServiceEndpoint(c *napnap.Context) {
 	if service == nil {
 		panic(AppError{ErrorCode: "not_found", Message: "service was not found"})
 	}
-	err = _serviceRepo.Delete(serviceID)
+	err = _serviceRepo.Delete(service.ID)
 	panicIf(err)
 	c.SetStatus(204)
 }
@@ -327,9 +327,8 @@ func registerUpstreamEndpoint(c *napnap.Context) {
 		panic(AppError{ErrorCode: "not_found", Message: "service was not found"})
 	}
 
-	upstreamID := target.Name
 	for _, upS := range service.Upstreams {
-		if upS.Name == upstreamID {
+		if upS.Name == target.Name {
 			panic(AppError{ErrorCode: "invalid_data", Message: "name already exists"})
 		}
 	}
@@ -346,7 +345,8 @@ func registerUpstreamEndpoint(c *napnap.Context) {
 	service.Upstreams = append(service.Upstreams, &target)
 	err = _serviceRepo.Update(service)
 	panicIf(err)
-	_services = reload()
+
+	reloadUpstreams()
 	c.JSON(201, target)
 }
 
@@ -368,10 +368,14 @@ func unRegisterUpstreamEndpoint(c *napnap.Context) {
 			service.Upstreams = append(service.Upstreams[:i], service.Upstreams[i+1:]...)
 			err = _serviceRepo.Update(service)
 			panicIf(err)
+			reloadUpstreams()
+			c.SetStatus(204)
+			return
 		}
 	}
-	_services = reload()
-	c.SetStatus(204)
+
+	panic(AppError{ErrorCode: "not_found", Message: "upstram was not found"})
+
 }
 
 func reloadEndpoint(c *napnap.Context) {
