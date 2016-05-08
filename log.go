@@ -70,7 +70,7 @@ func newloggerMongo() *loggerMongo {
 }
 
 func (lm *loggerMongo) writeErrorLog(errorlog AppError) {
-	session, err := mgo.Dial(_config.Logs.ErrorLog.ConnectionString)
+	session, err := mgo.Dial(_config.Logs.ApplicationLog.ConnectionString)
 	if err != nil {
 		panic(err)
 	}

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net"
 	"net/http/httputil"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/jasonsoft/napnap"
@@ -75,9 +77,15 @@ func listQueueCount() {
 }
 
 func writeAccessLog(connectionString string) {
-	conn, err := net.Dial("tcp", connectionString)
-	if err != nil {
-		panic(err)
+	url, err := url.Parse(connectionString)
+	panicIf(err)
+	var conn net.Conn
+	if strings.EqualFold(url.Scheme, "tcp") {
+		conn, err = net.Dial("tcp", url.Host)
+		panicIf(err)
+	} else {
+		conn, err = net.Dial("udp", url.Host)
+		panicIf(err)
 	}
 
 	// check connection status every 5 seconds
@@ -86,7 +94,7 @@ func writeAccessLog(connectionString string) {
 		for {
 			_, err = conn.Write(emptyByteArray)
 			if err != nil {
-				newConn, err := net.Dial("tcp", connectionString)
+				newConn, err := net.Dial("tcp", url.Host)
 				if err == nil {
 					conn = newConn
 				}
@@ -95,6 +103,11 @@ func writeAccessLog(connectionString string) {
 		}
 	}()
 
+	/*
+		g := newGelf(gelfConfig{
+			ConnectionString: connectionString,
+		})
+	*/
 	var empty byte
 	for {
 		select {
@@ -102,6 +115,8 @@ func writeAccessLog(connectionString string) {
 			go func(log accessLog) {
 				payload, _ := json.Marshal(log)
 				payload = append(payload, empty) // when we use tcp, we need to add null byte in the end.
+				//g.log(payload)
+				_logger.debugf("payload size: %v", len(payload))
 				conn.Write(payload)
 			}(logElement)
 		default:

@@ -171,21 +171,21 @@ type ServiceRepository interface {
 	Delete(id string) error
 }
 
-type apiMongo struct {
+type serviceMongo struct {
 	connectionString string
 }
 
-func newAPIMongo(connectionString string) (*apiMongo, error) {
+func newAPIMongo(connectionString string) (*serviceMongo, error) {
 	session, err := mgo.Dial(connectionString)
 	if err != nil {
 		panic(err)
 	}
 	defer session.Close()
-	c := session.DB("bifrost").C("apis")
+	c := session.DB("bifrost").C("service")
 
 	// create index
 	nameIdx := mgo.Index{
-		Name:       "api_name_idx",
+		Name:       "service_name_idx",
 		Key:        []string{"name"},
 		Background: true,
 		Sparse:     true,
@@ -196,7 +196,7 @@ func newAPIMongo(connectionString string) (*apiMongo, error) {
 	}
 
 	weightIdx := mgo.Index{
-		Name:       "api_weight_idx",
+		Name:       "service_weight_idx",
 		Key:        []string{"-weight", "created_at"},
 		Background: true,
 		Sparse:     true,
@@ -206,23 +206,23 @@ func newAPIMongo(connectionString string) (*apiMongo, error) {
 		return nil, err
 	}
 
-	return &apiMongo{
+	return &serviceMongo{
 		connectionString: connectionString,
 	}, nil
 }
 
-func (ams *apiMongo) newSession() (*mgo.Session, error) {
+func (ams *serviceMongo) newSession() (*mgo.Session, error) {
 	return mgo.Dial(ams.connectionString)
 }
 
-func (ams *apiMongo) Get(id string) (*service, error) {
+func (ams *serviceMongo) Get(id string) (*service, error) {
 	session, err := ams.newSession()
 	if err != nil {
 		return nil, err
 	}
 	defer session.Close()
 
-	c := session.DB("bifrost").C("apis")
+	c := session.DB("bifrost").C("services")
 	api := service{}
 	err = c.FindId(id).One(&api)
 	if err != nil {
@@ -234,14 +234,14 @@ func (ams *apiMongo) Get(id string) (*service, error) {
 	return &api, nil
 }
 
-func (ams *apiMongo) GetByName(name string) (*service, error) {
+func (ams *serviceMongo) GetByName(name string) (*service, error) {
 	session, err := ams.newSession()
 	if err != nil {
 		return nil, err
 	}
 	defer session.Close()
 
-	c := session.DB("bifrost").C("apis")
+	c := session.DB("bifrost").C("services")
 	api := service{}
 	err = c.Find(bson.M{"name": name}).One(&api)
 	if err != nil {
@@ -253,14 +253,14 @@ func (ams *apiMongo) GetByName(name string) (*service, error) {
 	return &api, nil
 }
 
-func (ams *apiMongo) GetAll() ([]*service, error) {
+func (ams *serviceMongo) GetAll() ([]*service, error) {
 	session, err := ams.newSession()
 	if err != nil {
 		return nil, err
 	}
 	defer session.Close()
 
-	c := session.DB("bifrost").C("apis")
+	c := session.DB("bifrost").C("services")
 	apis := []*service{}
 	err = c.Find(bson.M{}).Sort("-weight", "+created_at").All(&apis)
 	if err != nil {
@@ -272,14 +272,14 @@ func (ams *apiMongo) GetAll() ([]*service, error) {
 	return apis, nil
 }
 
-func (ams *apiMongo) Insert(api *service) error {
+func (ams *serviceMongo) Insert(api *service) error {
 	session, err := ams.newSession()
 	if err != nil {
 		return err
 	}
 	defer session.Close()
 
-	c := session.DB("bifrost").C("apis")
+	c := session.DB("bifrost").C("services")
 	api.ID = uuid.NewV4().String()
 	now := time.Now().UTC()
 	api.CreatedAt = now
@@ -295,7 +295,7 @@ func (ams *apiMongo) Insert(api *service) error {
 	return nil
 }
 
-func (ams *apiMongo) Update(api *service) error {
+func (ams *serviceMongo) Update(api *service) error {
 	if len(api.ID) == 0 {
 		return AppError{ErrorCode: "invalid_data", Message: "id can't be empty or null."}
 	}
@@ -308,7 +308,7 @@ func (ams *apiMongo) Update(api *service) error {
 	}
 	defer session.Close()
 
-	c := session.DB("bifrost").C("apis")
+	c := session.DB("bifrost").C("services")
 	colQuerier := bson.M{"_id": api.ID}
 	err = c.Update(colQuerier, api)
 	if err != nil {
@@ -317,14 +317,14 @@ func (ams *apiMongo) Update(api *service) error {
 	return nil
 }
 
-func (ams *apiMongo) Delete(id string) error {
+func (ams *serviceMongo) Delete(id string) error {
 	session, err := ams.newSession()
 	if err != nil {
 		return err
 	}
 	defer session.Close()
 
-	c := session.DB("bifrost").C("apis")
+	c := session.DB("bifrost").C("services")
 	colQuerier := bson.M{"_id": id}
 	err = c.Remove(colQuerier)
 	if err != nil {

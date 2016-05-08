@@ -26,10 +26,10 @@ type Configuration struct {
 			Type             string `yaml:"type"`
 			ConnectionString string `yaml:"connection_string"`
 		} `yaml:"access_log"`
-		ErrorLog struct {
+		ApplicationLog struct {
 			Type             string `yaml:"type"`
 			ConnectionString string `yaml:"connection_string"`
-		} `yaml:"error_log"`
+		} `yaml:"application_log"`
 	}
 	CustomErrors     bool     `yaml:"custom_errors"`
 	Binds            []string `yaml:"binds"`

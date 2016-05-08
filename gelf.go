@@ -3,11 +3,13 @@ package main
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/rand"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
 	"log"
+	"math"
 	"net"
 )
 
@@ -63,44 +65,41 @@ func newGelf(config gelfConfig) *gelf {
 	return g
 }
 
-func (g *gelf) log(message string) {
+func (g *gelf) log(data []byte) {
 	/*
 		msgJson := g.parseJson(message)
 
-
-			err := g.testForForbiddenValues(msgJson)
-			if err != nil {
-				log.Printf("Uh oh! %s", err)
-				return
-			}
-	*/
-	//time.Sleep(5 * time.Second)
-	//compressed := g.compress([]byte(message))
-
-	compressed := []byte(message)
-	_logger.debug(compressed)
-	g.send(compressed)
-
-	/*
-		chunksize := g.gelfConfig.MaxChunkSizeWan
-		length := compressed.Len()
-
-		if length > chunksize {
-
-			chunkCountInt := int(math.Ceil(float64(length) / float64(chunksize)))
-
-			id := make([]byte, 8)
-			rand.Read(id)
-
-			for i, index := 0, 0; i < length; i, index = i+chunksize, index+1 {
-				packet := g.createChunkedMessage(index, chunkCountInt, id, &compressed)
-				g.send(packet.Bytes())
-			}
-
-		} else {
-			g.send(compressed.Bytes())
+		err := g.testForForbiddenValues(msgJson)
+		if err != nil {
+			log.Printf("Uh oh! %s", err)
+			return
 		}
 	*/
+	compressed := g.compress(data)
+	/*
+		compressed := []byte(message)
+		_logger.debug(compressed)
+		g.send(compressed)
+	*/
+	chunksize := g.gelfConfig.MaxChunkSizeLan
+	length := compressed.Len()
+
+	if length > chunksize {
+
+		chunkCountInt := int(math.Ceil(float64(length) / float64(chunksize)))
+
+		id := make([]byte, 8)
+		rand.Read(id)
+
+		for i, index := 0, 0; i < length; i, index = i+chunksize, index+1 {
+			packet := g.createChunkedMessage(index, chunkCountInt, id, &compressed)
+			g.send(packet.Bytes())
+		}
+
+	} else {
+		g.send(compressed.Bytes())
+	}
+
 }
 
 func (g *gelf) createChunkedMessage(index int, chunkCountInt int, id []byte, compressed *bytes.Buffer) bytes.Buffer {

@@ -106,7 +106,7 @@ func main() {
 	nap.UseFunc(requestIDMiddleware())
 
 	// set access log
-	if len(_config.Logs.AccessLog.Type) > 0 && _config.Logs.AccessLog.Type == "gelf_tcp" {
+	if _config.Logs.AccessLog.Type == "graylog" && len(_config.Logs.AccessLog.ConnectionString) > 0 {
 		_accessLogsChan = make(chan accessLog, 20000)
 		nap.Use(newAccessLogMiddleware())
 		go writeAccessLog(_config.Logs.AccessLog.ConnectionString)
@@ -120,10 +120,10 @@ func main() {
 
 	// set error logger
 	nap.Use(newErrorLogMiddleware(true))
-	if _config.Logs.ErrorLog.Type == "gelf_tcp" && len(_config.Logs.ErrorLog.ConnectionString) > 0 {
+	if _config.Logs.ApplicationLog.Type == "graylog" && len(_config.Logs.ApplicationLog.ConnectionString) > 0 {
 		_errorLogsChan = make(chan errorLog, 10000)
-		go writeErrorLog(_config.Logs.ErrorLog.ConnectionString)
-		_logger.debug("error log were enabled and connection string are string are %s", _config.Logs.ErrorLog.ConnectionString)
+		go writeErrorLog(_config.Logs.ApplicationLog.ConnectionString)
+		_logger.debugf("error log were enabled and connection string are string are %s", _config.Logs.ApplicationLog.ConnectionString)
 	}
 
 	_status = newStatusMiddleware()

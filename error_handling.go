@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net"
 	"net/http/httputil"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/jasonsoft/napnap"
@@ -86,9 +88,15 @@ func (m *errorLogMiddleware) Invoke(c *napnap.Context, next napnap.HandlerFunc) 
 }
 
 func writeErrorLog(connectionString string) {
-	conn, err := net.Dial("tcp", connectionString)
-	if err != nil {
-		panic(err)
+	url, err := url.Parse(connectionString)
+	panicIf(err)
+	var conn net.Conn
+	if strings.EqualFold(url.Scheme, "tcp") {
+		conn, err = net.Dial("tcp", url.Host)
+		panicIf(err)
+	} else {
+		conn, err = net.Dial("udp", url.Host)
+		panicIf(err)
 	}
 
 	// check connection status every 5 seconds
@@ -97,7 +105,7 @@ func writeErrorLog(connectionString string) {
 		for {
 			_, err = conn.Write(emptyByteArray)
 			if err != nil {
-				newConn, err := net.Dial("tcp", connectionString)
+				newConn, err := net.Dial("tcp", url.Host)
 				if err == nil {
 					conn = newConn
 				}
