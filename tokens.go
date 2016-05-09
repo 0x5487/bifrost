@@ -11,6 +11,10 @@ import (
 	"github.com/satori/go.uuid"
 )
 
+type tokenCollection struct {
+	Tokens []*Token `json:"tokens"`
+}
+
 type Token struct {
 	Key         string    `json:"key" bson:"_id"`
 	Source      string    `json:"source" bson:"source"`

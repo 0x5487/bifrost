@@ -112,19 +112,21 @@ func getTokenEndpoint(c *napnap.Context) {
 	c.JSON(200, token)
 }
 
-func getTokensEndpoint(c *napnap.Context) {
+func listTokensEndpoint(c *napnap.Context) {
 	consumerId := c.Query("consumer_id")
 	if len(consumerId) > 0 {
-		result, err := _tokenRepo.GetByConsumerID(consumerId)
+		tokens, err := _tokenRepo.GetByConsumerID(consumerId)
 		panicIf(err)
-		if result == nil {
-			c.JSON(200, []Token{})
+		if tokens == nil {
+			c.JSON(200, tokenCollection{})
 			return
+		}
+		result := tokenCollection{
+			Tokens: tokens,
 		}
 		c.JSON(200, result)
 		return
 	}
-
 	//TODO: find all tokens and pagination
 }
 
@@ -264,10 +266,13 @@ func getServiceEndpoint(c *napnap.Context) {
 
 func listServicesEndpoint(c *napnap.Context) {
 	if _services == nil {
-		c.JSON(200, []service{})
+		c.JSON(200, serviceCollection{})
 		return
 	}
-	c.JSON(200, _services)
+	result := serviceCollection{
+		Services: _services,
+	}
+	c.JSON(200, result)
 }
 
 func updateServiceEndpoint(c *napnap.Context) {

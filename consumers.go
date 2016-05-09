@@ -10,6 +10,10 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+type consumerCollection struct {
+	Consumers []*Consumer `json:"consumers"`
+}
+
 type Consumer struct {
 	ID           string            `json:"id" bson:"_id"`
 	App          string            `json:"app" bson:"app"`

@@ -54,6 +54,10 @@ func (u *upstream) stopChecking() {
 	u.isChecking = false
 }
 
+type serviceCollection struct {
+	Services []*service `json:"services"`
+}
+
 type service struct {
 	sync.RWMutex
 	ID               string      `json:"id" bson:"_id"`
@@ -130,7 +134,6 @@ func (a service) isAllow(consumer Consumer) bool {
 	// if there isn't any policies, return true
 	return true
 }
-
 
 func (p policy) isAllowPolicy() bool {
 	if len(p.Allow) > 0 {
