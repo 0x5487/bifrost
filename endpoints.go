@@ -1,7 +1,6 @@
 package main
 
 import (
-	"net/url"
 	"time"
 
 	"github.com/jasonsoft/napnap"
@@ -317,6 +316,14 @@ func registerUpstreamEndpoint(c *napnap.Context) {
 		panic(AppError{ErrorCode: "invalid_data", Message: err.Error()})
 	}
 
+	// verify input
+	if len(target.TargetURL) == 0 {
+		panic(AppError{ErrorCode: "invalid_data", Message: "target_url field was missing or empty"})
+	}
+	if len(target.HealthCheckURL) == 0 {
+		panic(AppError{ErrorCode: "invalid_data", Message: "health_check_url field was missing or empty"})
+	}
+
 	serviceID := c.Param("service_id")
 	service, err := _serviceRepo.Get(serviceID)
 	panicIf(err)
@@ -329,23 +336,20 @@ func registerUpstreamEndpoint(c *napnap.Context) {
 
 	for _, upS := range service.Upstreams {
 		if upS.Name == target.Name {
-			panic(AppError{ErrorCode: "invalid_data", Message: "name already exists"})
+			// update
+			upS.stopChecking()
+			upS = &target
+			err = _serviceRepo.Update(service)
+			panicIf(err)
+			reloadUpstreams()
+			c.JSON(200, target)
+			return
 		}
 	}
 
-	// verify input
-	_, err = url.Parse(target.TargetURL)
-	if err != nil {
-		panic(AppError{ErrorCode: "invalid_data", Message: "target_url field is invalid"})
-	}
-	_, err = url.Parse(target.HealthCheckURL)
-	if err != nil {
-		panic(AppError{ErrorCode: "invalid_data", Message: "health_check_url field is invalid"})
-	}
 	service.Upstreams = append(service.Upstreams, &target)
 	err = _serviceRepo.Update(service)
 	panicIf(err)
-
 	reloadUpstreams()
 	c.JSON(201, target)
 }

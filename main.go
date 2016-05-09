@@ -122,7 +122,7 @@ func main() {
 	if _config.Logs.ApplicationLog.Type == "graylog" && len(_config.Logs.ApplicationLog.ConnectionString) > 0 {
 		_errorLogsChan = make(chan applocationLog, 10000)
 		go writeApplicationLog(_config.Logs.ApplicationLog.ConnectionString)
-		_logger.debugf("error log were enabled and connection string is %s", _config.Logs.ApplicationLog.ConnectionString)
+		_logger.debugf("application log were enabled and connection string is %s", _config.Logs.ApplicationLog.ConnectionString)
 	}
 
 	_status = newStatusMiddleware()
@@ -145,7 +145,7 @@ func main() {
 		options.AllowedOrigins = cors.AllowedOrigins
 		options.AllowedMethods = []string{"GET", "POST", "PUT", "DELETE"}
 		options.AllowedHeaders = []string{"*"}
-		_logger.debugf("cors: %v", strings.Join(options.AllowedOrigins[:], ","))
+		_logger.debugf("cors was enabled: %v", strings.Join(options.AllowedOrigins[:], ","))
 		nap.Use(napnap.NewCors(options))
 	}
 
@@ -187,7 +187,7 @@ func main() {
 
 	// upstream endpoints
 	adminRouter.Delete("/v1/services/:service_id/upstreams/:upstream_id", unRegisterUpstreamEndpoint)
-	adminRouter.Post("/v1/services/:service_id/upstreams", registerUpstreamEndpoint)
+	adminRouter.Put("/v1/services/:service_id/upstreams", registerUpstreamEndpoint)
 
 	adminNap.Use(adminRouter)
 	adminNap.UseFunc(notFound)
