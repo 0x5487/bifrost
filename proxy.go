@@ -54,11 +54,11 @@ func newProxy() *proxy {
 }
 
 func (p *proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
+	_logger.debugf("request host: %v", c.Request.Host)
+	_logger.debugf("request path: %v", c.Request.URL.Path)
+
 	requestHost := strings.ToLower(c.Request.Host)
 	requestPath := strings.ToLower(c.Request.URL.Path)
-
-	_logger.debugf("request host: %v", requestHost)
-	_logger.debugf("request path: %v", requestPath)
 
 	consumer := c.MustGet("consumer").(Consumer)
 
@@ -106,10 +106,14 @@ func (p *proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 
 	var url string
 	if svc.StripRequestPath {
-		newPath := strings.TrimPrefix(requestPath, svc.RequestPath)
+		prefix := strings.ToLower(svc.RequestPath)
+		newPath := c.Request.URL.Path
+		if strings.HasPrefix(requestPath, prefix) {
+			newPath = c.Request.URL.Path[len(prefix):]
+		}
 		url = u.TargetURL + newPath
 	} else {
-		url = u.TargetURL + requestPath
+		url = u.TargetURL + c.Request.URL.Path
 	}
 
 	rawQuery := c.Request.URL.RawQuery

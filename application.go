@@ -27,6 +27,11 @@ func newApplication() *application {
 	}
 }
 
+func checkOriginForCORS(origin string) bool {
+	_logger.debugf("origin: %v", origin)
+	return true
+}
+
 func notFound(c *napnap.Context, next napnap.HandlerFunc) {
 	c.SetStatus(404)
 }

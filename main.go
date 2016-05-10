@@ -142,7 +142,8 @@ func main() {
 	cors := _config.Cors
 	if cors.Enable {
 		options := napnap.Options{}
-		options.AllowedOrigins = cors.AllowedOrigins
+		//options.AllowedOrigins = cors.AllowedOrigins
+		options.AllowOriginFunc = checkOriginForCORS
 		options.AllowedMethods = []string{"GET", "POST", "PUT", "DELETE"}
 		options.AllowedHeaders = []string{"*"}
 		_logger.debugf("cors was enabled: %v", strings.Join(options.AllowedOrigins[:], ","))
