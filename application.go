@@ -59,11 +59,8 @@ func auth(c *napnap.Context, next napnap.HandlerFunc) {
 }
 
 type AppError struct {
-	RequestID string    `json:"-" bson:"_id"`
-	Hostname  string    `json:"-" bson:"hostname"`
-	ErrorCode string    `json:"error_code" bson:"-"`
-	Message   string    `json:"message" bson:"message"`
-	CreatedAt time.Time `json:"-" bson:"created_at"`
+	ErrorCode string `json:"error_code" bson:"-"`
+	Message   string `json:"message" bson:"message"`
 }
 
 func (e AppError) Error() string {
