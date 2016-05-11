@@ -292,7 +292,8 @@ func updateServiceEndpoint(c *napnap.Context) {
 		panic(AppError{ErrorCode: "not_found", Message: "service was not found"})
 	}
 
-	target.ID = serviceID
+	target.ID = service.ID
+	target.Upstreams = service.Upstreams
 	target.CreatedAt = service.CreatedAt
 	err = _serviceRepo.Update(&target)
 	panicIf(err)
