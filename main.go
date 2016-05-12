@@ -125,8 +125,7 @@ func main() {
 		_logger.debugf("application log were enabled and connection string is %s", _config.Logs.ApplicationLog.ConnectionString)
 	}
 
-	_status = newStatusMiddleware()
-	nap.Use(_status)
+	nap.Use(_app)
 
 	// turn on gzip feature
 	gzip := _config.Gzip

@@ -7,14 +7,31 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/jasonsoft/napnap"
 )
 
+type status struct {
+	Hostname       string    `json:"hostname"`
+	TotalRequests  uint64    `json:"total_requests"`
+	NetworkIn      int64     `json:"network_in"`
+	NetworkOut     int64     `json:"network_out"`
+	MemoryAcquired uint64    `json:"memory_acquired"`
+	MemoryUsed     uint64    `json:"memory_used"`
+	StartAt        time.Time `json:"start_at"`
+	Uptime         string    `json:"uptime"`
+}
+
 type application struct {
-	name     string
-	hostname string
+	sync.Mutex
+	name          string
+	hostname      string
+	totalRequests uint64
+	networkIn     int64
+	networkOut    int64
+	startAt       time.Time
 }
 
 func newApplication() *application {
@@ -24,7 +41,23 @@ func newApplication() *application {
 	return &application{
 		name:     "bifrost",
 		hostname: name,
+		startAt:  time.Now().UTC(),
 	}
+}
+
+func (a *application) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
+	a.Lock()
+	a.totalRequests++
+	if c.Request.ContentLength > 0 {
+		a.networkIn += c.Request.ContentLength
+	}
+	a.Unlock()
+
+	next(c)
+
+	a.Lock()
+	a.networkOut += int64(c.Writer.ContentLength())
+	a.Unlock()
 }
 
 func checkOriginForCORS(origin string) bool {

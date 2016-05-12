@@ -353,9 +353,16 @@ func reloadEndpoint(c *napnap.Context) {
 }
 
 func getStatus(c *napnap.Context) {
+	status := status{}
+	status.Hostname = _app.hostname
+	status.TotalRequests = _app.totalRequests
+	status.NetworkIn = _app.networkIn / 1000000
+	status.NetworkOut = _app.networkOut / 1000000
 	m := &runtime.MemStats{}
 	runtime.ReadMemStats(m)
-	_status.MemoryAcquired = m.Sys / 1000000
-	_status.MemoryUsed = m.Alloc / 1000000
-	c.JSON(200, _status)
+	status.MemoryAcquired = m.Sys / 1000000
+	status.MemoryUsed = m.Alloc / 1000000
+	status.StartAt = _app.startAt
+	status.Uptime = time.Since(_app.startAt).String()
+	c.JSON(200, status)
 }
