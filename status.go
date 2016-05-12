@@ -9,10 +9,12 @@ import (
 
 type status struct {
 	sync.Mutex
-	RequestCount int64     `json:"request_count"`
-	NetworkIn    int64     `json:"network_in"`
-	NetworkOut   int64     `json:"network_out"`
-	StartAt      time.Time `json:"start_at"`
+	RequestCount   int64     `json:"request_count"`
+	NetworkIn      int64     `json:"network_in"`
+	NetworkOut     int64     `json:"network_out"`
+	MemoryAcquired uint64    `json:"memory_acquired"`
+	MemoryUsed     uint64    `json:"memory_used"`
+	StartAt        time.Time `json:"start_at"`
 }
 
 func newStatusMiddleware() *status {

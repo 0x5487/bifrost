@@ -1,6 +1,7 @@
 package main
 
 import (
+	"runtime"
 	"time"
 
 	"github.com/jasonsoft/napnap"
@@ -394,5 +395,9 @@ func reloadEndpoint(c *napnap.Context) {
 }
 
 func getStatus(c *napnap.Context) {
+	m := &runtime.MemStats{}
+	runtime.ReadMemStats(m)
+	_status.MemoryAcquired = m.Sys / 1000000
+	_status.MemoryUsed = m.Alloc / 1000000
 	c.JSON(200, _status)
 }

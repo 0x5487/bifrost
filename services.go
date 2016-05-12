@@ -42,7 +42,7 @@ func (u *upstream) startChecking() {
 				u.Status = "failed"
 				continue
 			}
-			defer respClose(resp.Body)
+			respClose(resp.Body)
 			if resp.StatusCode == 200 {
 				u.Status = "alive"
 			}
