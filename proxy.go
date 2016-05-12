@@ -180,7 +180,8 @@ func (p *proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	if err != nil {
 		// upsteam server is down
 		if strings.Contains(err.Error(), "No connection could be made") {
-			c.Writer.WriteHeader(503)
+			svc.unregisterUpstream(u)
+			p.Invoke(c, next) // resend
 			return
 		}
 		panic(err)

@@ -96,7 +96,7 @@ func init() {
 	_logger.debugf("hostname: %v", _app.hostname)
 
 	// reload
-	_services = reload()
+	_services = reloadService(_serviceRepo, _services)
 }
 
 func main() {
@@ -187,7 +187,7 @@ func main() {
 	adminRouter.Post("/v1/services", createServiceEndpoint)
 
 	// upstream endpoints
-	adminRouter.Delete("/v1/services/:service_id/upstreams/:upstream_id", unRegisterUpstreamEndpoint)
+	//adminRouter.Delete("/v1/services/:service_id/upstreams/:upstream_id", unRegisterUpstreamEndpoint)
 	adminRouter.Put("/v1/services/:service_id/upstreams", registerUpstreamEndpoint)
 
 	adminNap.Use(adminRouter)

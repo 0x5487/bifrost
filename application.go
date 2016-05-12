@@ -76,35 +76,18 @@ type ApiCount struct {
 	Count int `json:"count"`
 }
 
-func reload() []*service {
-	services, err := _serviceRepo.GetAll()
+func reloadService(repo ServiceRepository, source []*service) []*service {
+	services, err := repo.GetAll()
 	panicIf(err)
-	// stop all health checking
-	for _, svc := range _services {
-		for _, upstream := range svc.Upstreams {
-			upstream.stopChecking()
-		}
-	}
-	for _, svc := range services {
-		for _, upstream := range svc.Upstreams {
-			upstream.startChecking()
+
+	for _, svc := range source {
+		for _, newSvc := range services {
+			if svc.ID == newSvc.ID {
+				newSvc.Upstreams = svc.Upstreams
+			}
 		}
 	}
 	return services
-}
-
-func reloadUpstreams() {
-	for _, svc := range _services {
-		newSvc, err := _serviceRepo.Get(svc.ID)
-		panicIf(err)
-		for _, upstream := range svc.Upstreams {
-			upstream.stopChecking()
-		}
-		svc.Upstreams = newSvc.Upstreams
-		for _, upstream := range svc.Upstreams {
-			upstream.startChecking()
-		}
-	}
 }
 
 type applocationLog struct {

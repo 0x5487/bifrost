@@ -329,70 +329,26 @@ func registerUpstreamEndpoint(c *napnap.Context) {
 	if len(target.TargetURL) == 0 {
 		panic(AppError{ErrorCode: "invalid_data", Message: "target_url field was missing or empty"})
 	}
-	if len(target.HealthCheckURL) == 0 {
-		panic(AppError{ErrorCode: "invalid_data", Message: "health_check_url field was missing or empty"})
-	}
 
 	serviceID := c.Param("service_id")
-	service, err := _serviceRepo.Get(serviceID)
-	panicIf(err)
-	if service == nil {
-		service, err = _serviceRepo.GetByName(serviceID)
+	var service *service
+	for _, svc := range _services {
+		if svc.ID == serviceID {
+			service = svc
+		} else if svc.Name == serviceID {
+			service = svc
+		}
 	}
 	if service == nil {
 		panic(AppError{ErrorCode: "not_found", Message: "service was not found"})
 	}
 
-	for _, upS := range service.Upstreams {
-		if upS.Name == target.Name {
-			// update
-			upS.stopChecking()
-			upS = &target
-			err = _serviceRepo.Update(service)
-			panicIf(err)
-			reloadUpstreams()
-			c.JSON(200, target)
-			return
-		}
-	}
-
-	service.Upstreams = append(service.Upstreams, &target)
-	err = _serviceRepo.Update(service)
-	panicIf(err)
-	reloadUpstreams()
-	c.JSON(201, target)
-}
-
-func unRegisterUpstreamEndpoint(c *napnap.Context) {
-	serviceID := c.Param("service_id")
-	service, err := _serviceRepo.Get(serviceID)
-	panicIf(err)
-	if service == nil {
-		service, err = _serviceRepo.GetByName(serviceID)
-	}
-	if service == nil {
-		panic(AppError{ErrorCode: "not_found", Message: "service was not found"})
-	}
-
-	upstreamID := c.Param("upstream_id")
-	for i, upS := range service.Upstreams {
-		if upS.Name == upstreamID {
-			// remove upstream
-			service.Upstreams = append(service.Upstreams[:i], service.Upstreams[i+1:]...)
-			err = _serviceRepo.Update(service)
-			panicIf(err)
-			reloadUpstreams()
-			c.SetStatus(204)
-			return
-		}
-	}
-
-	panic(AppError{ErrorCode: "not_found", Message: "upstram was not found"})
-
+	service.registerUpstream(&target)
+	c.JSON(200, target)
 }
 
 func reloadEndpoint(c *napnap.Context) {
-	_services = reload()
+	_services = reloadService(_serviceRepo, _services)
 	c.SetStatus(204)
 }
 

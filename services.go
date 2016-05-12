@@ -1,7 +1,6 @@
 package main
 
 import (
-	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -18,40 +17,9 @@ type policy struct {
 }
 
 type upstream struct {
-	count          int
-	isChecking     bool
-	Name           string `json:"name" bson:"name"`
-	TargetURL      string `json:"target_url" bson:"target_url"`
-	HealthCheckURL string `json:"health_check_url" bson:"health_check_url"`
-	Status         string `json:"status"`
-}
-
-func (u *upstream) startChecking() {
-	u.isChecking = true
-	go func() {
-		for u.isChecking == true {
-			time.Sleep(1 * time.Second)
-			outReq, err := http.NewRequest("GET", u.HealthCheckURL, nil)
-			if err != nil {
-				u.Status = "failed"
-				continue
-			}
-			// send to target
-			resp, err := _httpClient.Do(outReq)
-			if err != nil {
-				u.Status = "failed"
-				continue
-			}
-			respClose(resp.Body)
-			if resp.StatusCode == 200 {
-				u.Status = "alive"
-			}
-		}
-	}()
-}
-
-func (u *upstream) stopChecking() {
-	u.isChecking = false
+	count     int
+	Name      string `json:"name" bson:"name"`
+	TargetURL string `json:"target_url" bson:"target_url"`
 }
 
 type serviceCollection struct {
@@ -74,45 +42,60 @@ type service struct {
 	UpdatedAt        time.Time   `json:"updated_at" bson:"updated_at"`
 }
 
+func (s *service) registerUpstream(source *upstream) {
+	s.Lock()
+	defer s.Unlock()
+
+	for _, u := range s.Upstreams {
+		if u.Name == source.Name {
+			return
+		}
+	}
+
+	s.Upstreams = append(s.Upstreams, source)
+}
+
+func (s *service) unregisterUpstream(source *upstream) {
+	s.Lock()
+	defer s.Unlock()
+
+	for i, u := range s.Upstreams {
+		if u.Name == source.Name {
+			// remove upstream
+			s.Upstreams = append(s.Upstreams[:i], s.Upstreams[i+1:]...)
+			return
+		}
+	}
+}
+
 func (s *service) askForUpstream() *upstream {
 	s.Lock()
 	defer s.Unlock()
 
 	if len(s.Upstreams) == 1 {
-		u := s.Upstreams[0]
-		if u.Status == "alive" {
-			return u
-		}
-		return nil
+		return s.Upstreams[0]
 	}
-
-	var active bool
 	var result *upstream
 	for _, u := range s.Upstreams {
-		if u.Status == "alive" {
-			active = true
-		}
-		if u.Status == "alive" && u.count == 0 {
+		if u.count == 0 {
 			u.count++
 			result = u
 			break
 		}
 	}
-
 	// reset count
-	if result == nil && active {
+	if result == nil {
 		for _, u := range s.Upstreams {
 			u.count = 0
 		}
 		for _, u := range s.Upstreams {
-			if u.Status == "alive" && u.count == 0 {
+			if u.count == 0 {
 				u.count++
 				result = u
 				break
 			}
 		}
 	}
-
 	return result
 }
 
