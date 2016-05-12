@@ -123,6 +123,7 @@ func listTokensEndpoint(c *napnap.Context) {
 			return
 		}
 		result := tokenCollection{
+			Count:  len(tokens),
 			Tokens: tokens,
 		}
 		c.JSON(200, result)
@@ -271,6 +272,7 @@ func listServicesEndpoint(c *napnap.Context) {
 		return
 	}
 	result := serviceCollection{
+		Count:    len(_services),
 		Services: _services,
 	}
 	c.JSON(200, result)

@@ -12,6 +12,7 @@ import (
 )
 
 type tokenCollection struct {
+	Count  int      `json:"count"`
 	Tokens []*Token `json:"tokens"`
 }
 

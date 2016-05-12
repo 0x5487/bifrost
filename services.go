@@ -55,6 +55,7 @@ func (u *upstream) stopChecking() {
 }
 
 type serviceCollection struct {
+	Count    int        `json:"count"`
 	Services []*service `json:"services"`
 }
 
