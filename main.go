@@ -67,8 +67,8 @@ func init() {
 	// setup logger
 	_logger = newLog()
 	if _config.Debug {
-		_logger.debug("debug mode was enabled")
 		_logger.mode = debugLevel
+		_logger.infof("debug mode was enabled")
 	}
 
 	// initial consumer and token storage
@@ -93,7 +93,7 @@ func init() {
 	}
 
 	_app = newApplication()
-	_logger.debugf("hostname: %v", _app.hostname)
+	_logger.infof("hostname: %v", _app.hostname)
 
 	// reload
 	_services = reloadService(_serviceRepo, _services)
@@ -109,7 +109,7 @@ func main() {
 		_accessLogsChan = make(chan accessLog, 20000)
 		nap.Use(newAccessLogMiddleware())
 		go writeAccessLog(_config.Logs.AccessLog.ConnectionString)
-		_logger.debugf("access log were enabled and connection string is %s", _config.Logs.AccessLog.ConnectionString)
+		_logger.infof("access log were enabled and connection string is %s", _config.Logs.AccessLog.ConnectionString)
 	}
 
 	// set custom errors
@@ -122,7 +122,7 @@ func main() {
 	if _config.Logs.ApplicationLog.Type == "graylog" && len(_config.Logs.ApplicationLog.ConnectionString) > 0 {
 		_errorLogsChan = make(chan applocationLog, 10000)
 		go writeApplicationLog(_config.Logs.ApplicationLog.ConnectionString)
-		_logger.debugf("application log were enabled and connection string is %s", _config.Logs.ApplicationLog.ConnectionString)
+		_logger.infof("application log were enabled and connection string is %s", _config.Logs.ApplicationLog.ConnectionString)
 	}
 
 	nap.Use(_app)
@@ -130,7 +130,7 @@ func main() {
 	// turn on gzip feature
 	gzip := _config.Gzip
 	if gzip.Enable {
-		_logger.debug("gzip was enabled")
+		_logger.info("gzip was enabled")
 		nap.Use(napnap.NewGzip(napnap.DefaultCompression))
 	}
 
@@ -145,7 +145,7 @@ func main() {
 		options.AllowOriginFunc = checkOriginForCORS
 		options.AllowedMethods = []string{"GET", "POST", "PUT", "DELETE"}
 		options.AllowedHeaders = []string{"*"}
-		_logger.debugf("cors was enabled: %v", strings.Join(options.AllowedOrigins[:], ","))
+		_logger.infof("cors was enabled: %v", strings.Join(options.AllowedOrigins[:], ","))
 		nap.Use(napnap.NewCors(options))
 	}
 
