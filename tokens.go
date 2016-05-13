@@ -17,12 +17,12 @@ type tokenCollection struct {
 }
 
 type Token struct {
-	Key         string    `json:"key" bson:"_id"`
-	Source      string    `json:"source" bson:"source"`
-	ConsumerID  string    `json:"consumer_id" bson:"consumer_id"`
-	IPAddresses []string  `json:"ip_addresses" bson:"ip_addresses"`
-	Expiration  time.Time `json:"expiration" bson:"expiration"`
-	CreatedAt   time.Time `json:"created_at" bson:"created_at"`
+	Key        string    `json:"key" bson:"_id"`
+	Source     string    `json:"source" bson:"source"`
+	ConsumerID string    `json:"consumer_id" bson:"consumer_id"`
+	IPAddress  string    `json:"ip_address" bson:"ip_address"`
+	Expiration time.Time `json:"expiration" bson:"expiration"`
+	CreatedAt  time.Time `json:"created_at" bson:"created_at"`
 }
 
 func newToken(consumerID string) *Token {

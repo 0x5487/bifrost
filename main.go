@@ -171,6 +171,7 @@ func main() {
 	adminRouter.Put("/v1/consumers", upateOrCreateConsumerEndpoint)
 
 	// token endpoints
+	adminRouter.Put("/v1/tokens/:key/expire", expireTokenEndpoint)
 	adminRouter.Get("/v1/tokens/:key", getTokenEndpoint)
 	adminRouter.Delete("/v1/tokens/:key", deleteTokenEndpoint)
 	adminRouter.Get("/v1/tokens", listTokensEndpoint)

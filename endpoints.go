@@ -202,6 +202,26 @@ func deleteTokenEndpoint(c *napnap.Context) {
 	c.SetStatus(204)
 }
 
+func expireTokenEndpoint(c *napnap.Context) {
+	key := c.Param("key")
+
+	if len(key) == 0 {
+		panic(AppError{ErrorCode: "not_found", Message: "token was not found"})
+	}
+
+	token, err := _tokenRepo.Get(key)
+	panicIf(err)
+	if token == nil {
+		panic(AppError{ErrorCode: "not_found", Message: "token was not found"})
+	}
+
+	token.Expiration = time.Now().UTC()
+	err = _tokenRepo.Update(token)
+	panicIf(err)
+
+	c.SetStatus(204)
+}
+
 func deleteTokensEndpoint(c *napnap.Context) {
 	consumerId := c.Query("consumer_id")
 	var tokens []*Token
@@ -300,7 +320,7 @@ func updateServiceEndpoint(c *napnap.Context) {
 	target.CreatedAt = service.CreatedAt
 	err = _serviceRepo.Update(&target)
 	panicIf(err)
-	c.JSON(200, service)
+	c.JSON(200, target)
 }
 
 func deleteServiceEndpoint(c *napnap.Context) {

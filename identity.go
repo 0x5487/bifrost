@@ -38,10 +38,11 @@ func identity(c *napnap.Context, next napnap.HandlerFunc) {
 		return
 	}
 
+	// verify client's ip which must be the same as token's ip address.
 	if _config.Token.VerifyIP {
-		clientIP := c.RemoteIPAddress()
+		clientIP := getClientIP(c.RemoteIPAddress())
 		_logger.debugf("consumer ip: %v", clientIP)
-		if contains(token.IPAddresses, clientIP) == false && contains(token.IPAddresses, "0.0.0.0") == false {
+		if len(token.IPAddress) > 0 && token.IPAddress != clientIP {
 			consumer = Consumer{}
 			_logger.debug("token didn't match client ip")
 			c.Set("consumer", consumer)
