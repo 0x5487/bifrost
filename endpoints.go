@@ -367,6 +367,32 @@ func registerUpstreamEndpoint(c *napnap.Context) {
 	c.JSON(200, target)
 }
 
+func unRegisterUpstreamEndpoint(c *napnap.Context) {
+	serviceID := c.Param("service_id")
+	var service *service
+	for _, svc := range _services {
+		if svc.ID == serviceID {
+			service = svc
+		} else if svc.Name == serviceID {
+			service = svc
+		}
+	}
+	if service == nil {
+		panic(AppError{ErrorCode: "not_found", Message: "service was not found"})
+	}
+
+	upstreamID := c.Param("upstream_id")
+	for _, upS := range service.Upstreams {
+		if upS.Name == upstreamID {
+			// remove upstream
+			service.unregisterUpstream(upS)
+			c.SetStatus(204)
+			return
+		}
+	}
+	panic(AppError{ErrorCode: "not_found", Message: "upstream was not found"})
+}
+
 func reloadEndpoint(c *napnap.Context) {
 	_services = reloadService(_serviceRepo, _services)
 	c.SetStatus(204)
