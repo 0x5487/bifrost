@@ -18,8 +18,9 @@ type policy struct {
 
 type upstream struct {
 	count     int
-	Name      string `json:"name" bson:"name"`
-	TargetURL string `json:"target_url" bson:"target_url"`
+	Name      string    `json:"name" bson:"name"`
+	TargetURL string    `json:"target_url" bson:"target_url"`
+	UpdatedAt time.Time `json:"updated_at" bson:"updated_at"`
 }
 
 type serviceCollection struct {
@@ -46,12 +47,13 @@ func (s *service) registerUpstream(source *upstream) {
 	s.Lock()
 	defer s.Unlock()
 
+	source.UpdatedAt = time.Now().UTC()
 	for _, u := range s.Upstreams {
 		if u.Name == source.Name {
+			u.TargetURL = source.TargetURL
 			return
 		}
 	}
-
 	s.Upstreams = append(s.Upstreams, source)
 }
 

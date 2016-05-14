@@ -353,9 +353,7 @@ func registerUpstreamEndpoint(c *napnap.Context) {
 	serviceID := c.Param("service_id")
 	var service *service
 	for _, svc := range _services {
-		if svc.ID == serviceID {
-			service = svc
-		} else if svc.Name == serviceID {
+		if svc.ID == serviceID || svc.Name == serviceID {
 			service = svc
 		}
 	}
