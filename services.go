@@ -17,10 +17,11 @@ type policy struct {
 }
 
 type upstream struct {
-	count     int
-	Name      string    `json:"name" bson:"name"`
-	TargetURL string    `json:"target_url" bson:"target_url"`
-	UpdatedAt time.Time `json:"updated_at" bson:"updated_at"`
+	count         int
+	Name          string    `json:"name" bson:"-"`
+	TargetURL     string    `json:"target_url" bson:"-"`
+	TotalRequests uint64    `json:"total_requests" bson:"-"`
+	UpdatedAt     time.Time `json:"updated_at" bson:"-"`
 }
 
 type serviceCollection struct {
@@ -80,6 +81,7 @@ func (s *service) askForUpstream() *upstream {
 	var result *upstream
 	for _, u := range s.Upstreams {
 		if u.count == 0 {
+			u.TotalRequests++
 			u.count++
 			result = u
 			break
@@ -92,6 +94,7 @@ func (s *service) askForUpstream() *upstream {
 		}
 		for _, u := range s.Upstreams {
 			if u.count == 0 {
+				u.TotalRequests++
 				u.count++
 				result = u
 				break
