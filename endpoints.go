@@ -399,6 +399,7 @@ func reloadEndpoint(c *napnap.Context) {
 func getStatus(c *napnap.Context) {
 	status := status{}
 	status.Hostname = _app.hostname
+	status.NumCPU = runtime.NumCPU()
 	status.TotalRequests = _app.totalRequests
 	status.NetworkIn = _app.networkIn / 1000000
 	status.NetworkOut = _app.networkOut / 1000000
