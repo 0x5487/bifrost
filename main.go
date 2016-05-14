@@ -68,7 +68,7 @@ func init() {
 	_logger = newLog()
 	if _config.Debug {
 		_logger.mode = debugLevel
-		_logger.infof("debug mode was enabled")
+		_logger.info("debug mode was enabled")
 	}
 
 	// initial consumer and token storage

@@ -36,7 +36,7 @@ type service struct {
 	RequestHost      string      `json:"request_host" bson:"request_host"`
 	RequestPath      string      `json:"request_path" bson:"request_path"`
 	StripRequestPath bool        `json:"strip_request_path" bson:"strip_request_path"`
-	Upstreams        []*upstream `json:"upstreams" bson:"upstreams"`
+	Upstreams        []*upstream `json:"upstreams" bson:"-"`
 	Redirect         bool        `json:"redirect" bson:"redirect"`
 	Policies         []policy    `json:"policies" bson:"policies"`
 	Weight           int         `json:"weight" bson:"weight"`
@@ -48,13 +48,17 @@ func (s *service) registerUpstream(source *upstream) {
 	s.Lock()
 	defer s.Unlock()
 
-	source.UpdatedAt = time.Now().UTC()
+	// update upstream
 	for _, u := range s.Upstreams {
 		if u.Name == source.Name {
+			u.UpdatedAt = time.Now().UTC()
 			u.TargetURL = source.TargetURL
 			return
 		}
 	}
+
+	// add upstream
+	source.UpdatedAt = time.Now().UTC()
 	s.Upstreams = append(s.Upstreams, source)
 }
 
@@ -75,10 +79,13 @@ func (s *service) askForUpstream() *upstream {
 	s.Lock()
 	defer s.Unlock()
 
-	if len(s.Upstreams) == 1 {
-		return s.Upstreams[0]
-	}
 	var result *upstream
+	if len(s.Upstreams) == 1 {
+		result = s.Upstreams[0]
+		result.TotalRequests++
+		return result
+	}
+
 	for _, u := range s.Upstreams {
 		if u.count == 0 {
 			u.TotalRequests++
