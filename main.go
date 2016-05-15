@@ -23,8 +23,10 @@ var (
 	_consumerRepo   ConsumerRepository
 	_tokenRepo      TokenRepository
 	_serviceRepo    ServiceRepository
+	_corsRepo       CORSRepository
 	_status         *status
 	_services       []*service
+	_cors           *configCORS
 	_accessLogsChan chan accessLog
 	_errorLogsChan  chan applocationLog
 )
@@ -90,6 +92,11 @@ func init() {
 		if err != nil {
 			panic(err)
 		}
+
+		_corsRepo, err = newCORSMongo(_config.Data.ConnectionString)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	_app = newApplication()
@@ -141,12 +148,17 @@ func main() {
 	cors := _config.Cors
 	if cors.Enable {
 		options := napnap.Options{}
-		//options.AllowedOrigins = cors.AllowedOrigins
-		options.AllowOriginFunc = checkOriginForCORS
+		var err error
+		_cors, err = _corsRepo.Get()
+		panicIf(err)
+		if _cors == nil {
+			_cors = newConfigCORS()
+		}
+		options.AllowOriginFunc = _cors.verifyOrigin
 		options.AllowedMethods = []string{"GET", "POST", "PUT", "DELETE"}
 		options.AllowedHeaders = []string{"*"}
-		_logger.infof("cors was enabled: %v", strings.Join(options.AllowedOrigins[:], ","))
 		nap.Use(napnap.NewCors(options))
+		_logger.infof("cors was enabled: %v", strings.Join(options.AllowedOrigins[:], ","))
 	}
 
 	nap.UseFunc(identity)
@@ -189,6 +201,11 @@ func main() {
 	// upstream endpoints
 	adminRouter.Delete("/v1/services/:service_id/upstreams/:upstream_id", unRegisterUpstreamEndpoint)
 	adminRouter.Put("/v1/services/:service_id/upstreams", registerUpstreamEndpoint)
+
+	// config endpoints
+	adminRouter.Put("/v1/configs/cors/reload", reloadCORSEndpoint)
+	adminRouter.Get("/v1/configs/cors", getCORSEndpoint)
+	adminRouter.Put("/v1/configs/cors", createOrUpdateCORSEndpoint)
 
 	adminNap.Use(adminRouter)
 	adminNap.UseFunc(notFound)

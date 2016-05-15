@@ -48,6 +48,18 @@ func (l *logger) infof(format string, v ...interface{}) {
 	}
 }
 
+func (l *logger) error(v ...interface{}) {
+	if l.mode <= errorLevel {
+		log.Println(v)
+	}
+}
+
+func (l *logger) errorf(format string, v ...interface{}) {
+	if l.mode <= errorLevel {
+		log.Printf(format, v)
+	}
+}
+
 func (l *logger) fatal(v ...interface{}) {
 	if l.mode <= fatalLevel {
 		log.Fatal(v)

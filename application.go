@@ -61,11 +61,6 @@ func (a *application) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	a.Unlock()
 }
 
-func checkOriginForCORS(origin string) bool {
-	_logger.debugf("origin: %v", origin)
-	return true
-}
-
 func notFound(c *napnap.Context, next napnap.HandlerFunc) {
 	c.SetStatus(404)
 }
@@ -143,18 +138,27 @@ func writeApplicationLog(connectionString string) {
 	var conn net.Conn
 	if strings.EqualFold(url.Scheme, "tcp") {
 		conn, err = net.Dial("tcp", url.Host)
-		panicIf(err)
+		if err != nil {
+			_logger.errorf("application log connection was failed %v", err)
+		}
 	} else {
 		conn, err = net.Dial("udp", url.Host)
-		panicIf(err)
+		if err != nil {
+			_logger.errorf("application log connection was failed %v", err)
+		}
 	}
 
 	// check connection status every 5 seconds
 	var emptyByteArray []byte
 	go func() {
 		for {
-			_, err = conn.Write(emptyByteArray)
-			if err != nil {
+			if conn != nil {
+				_, err = conn.Write(emptyByteArray)
+				if err != nil {
+					conn = nil
+				}
+			} else {
+				// TODO: tcp is hard-code, we need to remove that
 				newConn, err := net.Dial("tcp", url.Host)
 				if err == nil {
 					conn = newConn

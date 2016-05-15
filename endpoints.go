@@ -2,6 +2,7 @@ package main
 
 import (
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/jasonsoft/napnap"
@@ -389,6 +390,58 @@ func unRegisterUpstreamEndpoint(c *napnap.Context) {
 		}
 	}
 	panic(AppError{ErrorCode: "not_found", Message: "upstream was not found"})
+}
+
+func createOrUpdateCORSEndpoint(c *napnap.Context) {
+	var target configCORS
+	err := c.BindJSON(&target)
+	if err != nil {
+		panic(AppError{ErrorCode: "invalid_data", Message: err.Error()})
+	}
+
+	cors, err := _corsRepo.Get()
+	panicIf(err)
+
+	if cors == nil {
+		// create configCORS
+		target.Name = "cors"
+		err = _corsRepo.Insert(&target)
+		panicIf(err)
+		c.JSON(201, target)
+		return
+	}
+
+	// update configCORS
+	cors.AllowedOrigins = target.AllowedOrigins
+	err = _corsRepo.Update(cors)
+	panicIf(err)
+	c.JSON(200, cors)
+
+}
+
+func getCORSEndpoint(c *napnap.Context) {
+	mode := strings.ToLower(c.Query("mode"))
+
+	// preview mode
+	if mode == "preview" {
+		cors, err := _corsRepo.Get()
+		panicIf(err)
+		if cors == nil {
+			c.SetStatus(404)
+		}
+		c.JSON(200, cors)
+		return
+	}
+
+	// nornal mode
+	c.JSON(200, _cors)
+}
+
+func reloadCORSEndpoint(c *napnap.Context) {
+	var err error
+	_cors, err = _corsRepo.Get()
+	panicIf(err)
+	c.SetStatus(204)
 }
 
 func reloadEndpoint(c *napnap.Context) {
