@@ -173,9 +173,11 @@ func writeApplicationLog(connectionString string) {
 		select {
 		case logElement := <-_errorLogsChan:
 			go func(log applocationLog) {
-				payload, _ := json.Marshal(log)
-				payload = append(payload, empty) // when we use tcp, we need to add null byte in the end.
-				conn.Write(payload)
+				if conn != nil {
+					payload, _ := json.Marshal(log)
+					payload = append(payload, empty) // when we use tcp, we need to add null byte in the end.
+					conn.Write(payload)
+				}
 			}(logElement)
 		default:
 			time.Sleep(5 * time.Second)

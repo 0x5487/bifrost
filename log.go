@@ -26,37 +26,37 @@ func newLog() *logger {
 
 func (l *logger) debug(v ...interface{}) {
 	if l.mode <= debugLevel {
-		log.Println(v)
+		log.Println("[Debug] ", v)
 	}
 }
 
 func (l *logger) debugf(format string, v ...interface{}) {
 	if l.mode <= debugLevel {
-		log.Printf(format, v)
+		log.Printf("[Debug] "+format, v)
 	}
 }
 
 func (l *logger) info(v ...interface{}) {
 	if l.mode <= infoLevel {
-		log.Println(v)
+		log.Println("[Info] ", v)
 	}
 }
 
 func (l *logger) infof(format string, v ...interface{}) {
 	if l.mode <= infoLevel {
-		log.Printf(format, v)
+		log.Printf("[Info] "+format, v)
 	}
 }
 
 func (l *logger) error(v ...interface{}) {
 	if l.mode <= errorLevel {
-		log.Println(v)
+		log.Println("[Debug] ", v)
 	}
 }
 
 func (l *logger) errorf(format string, v ...interface{}) {
 	if l.mode <= errorLevel {
-		log.Printf(format, v)
+		log.Printf("[Error] "+format, v)
 	}
 }
 

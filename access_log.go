@@ -128,11 +128,13 @@ func writeAccessLog(connectionString string) {
 		select {
 		case logElement := <-_accessLogsChan:
 			go func(log accessLog) {
-				payload, _ := json.Marshal(log)
-				payload = append(payload, empty) // when we use tcp, we need to add null byte in the end.
-				//g.log(payload)
-				_logger.debugf("payload size: %v", len(payload))
-				conn.Write(payload)
+				if conn != nil {
+					payload, _ := json.Marshal(log)
+					payload = append(payload, empty) // when we use tcp, we need to add null byte in the end.
+					//g.log(payload)
+					_logger.debugf("payload size: %v", len(payload))
+					conn.Write(payload)
+				}
 			}(logElement)
 		default:
 			time.Sleep(5 * time.Second)
