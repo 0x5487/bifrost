@@ -13,16 +13,25 @@ import (
 )
 
 type accessLog struct {
+	Version       string `json:"version"`
 	Host          string `json:"host"`
 	ShortMessage  string `json:"short_message"`
 	FullMessage   string `json:"full_message"`
+	Timestamp     int64  `json:"timestamp"`
 	RequestID     string `json:"_request_id"`
 	Origin        string `json:"_origin"`
 	Status        int    `json:"_status"`
 	ContentLength int    `json:"_content_length"`
 	ClientIP      string `json:"_client_ip"`
-	Duration      string `json:"_duration"`
+	Duration      int64  `json:"_duration"`
 	UserAgent     string `json:"_userAgent"`
+}
+
+func newAccessLog() *accessLog {
+	return &accessLog{
+		Version:   "1.1",
+		Timestamp: time.Now().Unix(),
+	}
 }
 
 type accessLogMiddleware struct {
@@ -36,15 +45,17 @@ func (am *accessLogMiddleware) Invoke(c *napnap.Context, next napnap.HandlerFunc
 	startTime := time.Now()
 	next(c)
 	accessLog := accessLog{
+		Version:       "1.1",
 		Host:          _app.hostname,
 		ShortMessage:  fmt.Sprintf("%s %s", c.Request.Method, c.Request.URL.Path),
+		Timestamp:     startTime.Unix(),
 		RequestID:     c.MustGet("request-id").(string),
 		Origin:        c.RequestHeader("Origin"),
 		Status:        c.Writer.Status(),
 		ContentLength: c.Writer.ContentLength(),
 		ClientIP:      getClientIP(c.RemoteIPAddress()),
 		UserAgent:     c.RequestHeader("User-Agent"),
-		Duration:      time.Since(startTime).String(),
+		Duration:      int64(time.Since(startTime) / time.Millisecond),
 	}
 
 	if !(c.Writer.Status() >= 200 && c.Writer.Status() < 400) {

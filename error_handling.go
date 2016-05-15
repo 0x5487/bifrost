@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http/httputil"
+	"time"
 
 	"github.com/jasonsoft/napnap"
 )
@@ -44,24 +45,22 @@ func (m *errorLogMiddleware) Invoke(c *napnap.Context, next napnap.HandlerFunc) 
 
 			// write error log
 			if m.enableErrorLog {
-				clientIP := getClientIP(c.RemoteIPAddress())
-				requestID := c.MustGet("request-id").(string)
 				requestDump, err := httputil.DumpRequest(c.Request, true)
-				shortMsg := fmt.Sprintf("%s %s", c.Request.Method, c.Request.URL.Path)
-				fullMessage := fmt.Sprintf("error message: %s \n request info: %s \n ", err.Error(), string(requestDump))
-				errorLog := applocationLog{
+				appLog := applocationLog{
+					Version:      "1.1",
 					Host:         _app.hostname,
 					App:          _app.name,
 					Domain:       c.Request.Host,
 					Level:        3,
-					RequestID:    requestID,
-					ShortMessage: shortMsg,
-					FullMessage:  fullMessage,
-					ClientIP:     clientIP,
+					RequestID:    c.MustGet("request-id").(string),
+					ShortMessage: fmt.Sprintf("%s %s", c.Request.Method, c.Request.URL.Path),
+					FullMessage:  fmt.Sprintf("error message: %s \n request info: %s \n ", err.Error(), string(requestDump)),
+					Timestamp:    time.Now().Unix(),
+					ClientIP:     getClientIP(c.RemoteIPAddress()),
 				}
 
 				select {
-				case _errorLogsChan <- errorLog:
+				case _errorLogsChan <- appLog:
 				default:
 					_logger.debug("error queue was full")
 				}

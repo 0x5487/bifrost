@@ -125,10 +125,12 @@ func reloadService(repo ServiceRepository, source []*service) []*service {
 }
 
 type applocationLog struct {
+	Version      string `json:"version"`
 	Host         string `json:"host"`
 	Level        int    `json:"level"`
 	ShortMessage string `json:"short_message"`
 	FullMessage  string `json:"full_message"`
+	Timestamp    int64  `json:"timestamp"`
 	RequestID    string `json:"_request_id"`
 	App          string `json:"_app"`
 	Domain       string `json:"_domain"`
