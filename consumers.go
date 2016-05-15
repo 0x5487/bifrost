@@ -212,7 +212,7 @@ func (cm *consumerMongo) Update(consumer *Consumer) error {
 	if len(consumer.ID) == 0 {
 		return AppError{ErrorCode: "invalid_data", Message: "app filed was invalid."}
 	}
-	now := time.Now()
+	now := time.Now().UTC()
 	consumer.UpdatedAt = now
 
 	session, err := cm.newSession()
