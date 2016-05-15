@@ -1,0 +1,6 @@
+binds: [":8080"]
+data:
+    type: mongodb 
+    connection_string: 
+
+
