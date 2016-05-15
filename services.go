@@ -326,7 +326,7 @@ func (ams *serviceMongo) Update(api *service) error {
 	if len(api.ID) == 0 {
 		return AppError{ErrorCode: "invalid_data", Message: "id can't be empty or null."}
 	}
-	now := time.Now()
+	now := time.Now().UTC()
 	api.UpdatedAt = now
 
 	session, err := ams.newSession()
