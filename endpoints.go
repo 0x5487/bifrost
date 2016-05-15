@@ -9,7 +9,7 @@ import (
 	"github.com/satori/go.uuid"
 )
 
-func upateOrCreateConsumerEndpoint(c *napnap.Context) {
+func createOrupateConsumerEndpoint(c *napnap.Context) {
 	var target Consumer
 	err := c.BindJSON(&target)
 	if err != nil {
@@ -259,6 +259,7 @@ func createServiceEndpoint(c *napnap.Context) {
 	}
 
 	target.Upstreams = []*upstream{}
+
 	err = _serviceRepo.Insert(&target)
 	panicIf(err)
 
@@ -288,13 +289,23 @@ func getServiceEndpoint(c *napnap.Context) {
 }
 
 func listServicesEndpoint(c *napnap.Context) {
-	if _services == nil {
-		c.JSON(200, serviceCollection{})
-		return
+	mode := c.Query("mode")
+	result := newServiesCollection()
+	if mode == "preview" {
+		services, err := _serviceRepo.GetAll()
+		panicIf(err)
+		if len(services) > 0 {
+			result = &serviceCollection{
+				Count:    len(services),
+				Services: services,
+			}
+		}
 	}
-	result := serviceCollection{
-		Count:    len(_services),
-		Services: _services,
+	if len(_services) > 0 {
+		result = &serviceCollection{
+			Count:    len(_services),
+			Services: _services,
+		}
 	}
 	c.JSON(200, result)
 }
@@ -336,6 +347,11 @@ func deleteServiceEndpoint(c *napnap.Context) {
 	}
 	err = _serviceRepo.Delete(service.ID)
 	panicIf(err)
+	c.SetStatus(204)
+}
+
+func reloadServiceEndpoint(c *napnap.Context) {
+	_services = reloadService(_serviceRepo, _services)
 	c.SetStatus(204)
 }
 
@@ -441,11 +457,6 @@ func reloadCORSEndpoint(c *napnap.Context) {
 	var err error
 	_cors, err = _corsRepo.Get()
 	panicIf(err)
-	c.SetStatus(204)
-}
-
-func reloadEndpoint(c *napnap.Context) {
-	_services = reloadService(_serviceRepo, _services)
 	c.SetStatus(204)
 }
 

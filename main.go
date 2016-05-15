@@ -174,13 +174,13 @@ func main() {
 
 	adminRouter := napnap.NewRouter()
 	adminRouter.Get("/status", getStatus)
-	adminRouter.Put("/reload", reloadEndpoint)
+	adminRouter.Put("/reload", reloadServiceEndpoint)
 
 	// consumer endpoints
 	adminRouter.Get("/v1/consumers/count", getConsumerCountEndpoint)
 	adminRouter.Get("/v1/consumers/:consumer_id", getConsumerEndpoint)
 	adminRouter.Delete("/v1/consumers/:consumer_id", deletedConsumerEndpoint)
-	adminRouter.Put("/v1/consumers", upateOrCreateConsumerEndpoint)
+	adminRouter.Put("/v1/consumers", createOrupateConsumerEndpoint)
 
 	// token endpoints
 	adminRouter.Put("/v1/tokens/:key/expire", expireTokenEndpoint)
@@ -192,6 +192,7 @@ func main() {
 	adminRouter.Delete("/v1/tokens", deleteTokensEndpoint)
 
 	// service endpoints
+	adminRouter.Put("/v1/services/reload", reloadServiceEndpoint)
 	adminRouter.Get("/v1/services/:service_id", getServiceEndpoint)
 	adminRouter.Delete("/v1/services/:service_id", deleteServiceEndpoint)
 	adminRouter.Put("/v1/services/:service_id", updateServiceEndpoint)

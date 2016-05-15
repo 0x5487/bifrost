@@ -29,6 +29,13 @@ type serviceCollection struct {
 	Services []*service `json:"services"`
 }
 
+func newServiesCollection() *serviceCollection {
+	return &serviceCollection{
+		Count:    0,
+		Services: []*service{},
+	}
+}
+
 type service struct {
 	sync.RWMutex
 	ID               string      `json:"id" bson:"_id"`
@@ -38,10 +45,12 @@ type service struct {
 	StripRequestPath bool        `json:"strip_request_path" bson:"strip_request_path"`
 	Upstreams        []*upstream `json:"upstreams" bson:"-"`
 	Redirect         bool        `json:"redirect" bson:"redirect"`
-	Policies         []policy    `json:"policies" bson:"policies"`
-	Weight           int         `json:"weight" bson:"weight"`
-	CreatedAt        time.Time   `json:"created_at" bson:"created_at"`
-	UpdatedAt        time.Time   `json:"updated_at" bson:"updated_at"`
+	Authorization    bool        `json:"authorization" bson:"authorization"`
+	Whitelist        []string    `json:"whitelist" bson:"whitelist"`
+	//Policies         []policy  `json:"policies" bson:"policies"`
+	Weight    int       `json:"weight" bson:"weight"`
+	CreatedAt time.Time `json:"created_at" bson:"created_at"`
+	UpdatedAt time.Time `json:"updated_at" bson:"updated_at"`
 }
 
 func (s *service) registerUpstream(source *upstream) {
@@ -116,21 +125,39 @@ func (*service) isValid() bool {
 }
 
 func (a service) isAllow(consumer Consumer) bool {
-	for _, policy := range a.Policies {
-		if policy.isAllowPolicy() == false {
-			if policy.isMatch("deny", consumer) {
-				return false
-			}
-		} else {
-			if policy.isMatch("allow", consumer) {
-				return true
-			}
+	if a.Authorization == true && consumer.isAuthenticated() == false {
+		return false
+	}
+	if len(a.Whitelist) == 0 {
+		return true
+	}
+	if len(consumer.Roles) == 0 {
+		return false
+	}
+	for _, role := range consumer.Roles {
+		if contains(a.Whitelist, role) {
+			return true
 		}
 	}
-	// if there isn't any policies, return true
-	return true
+	return false
+	/*
+		for _, policy := range a.Policies {
+			if policy.isAllowPolicy() == false {
+				if policy.isMatch("deny", consumer) {
+					return false
+				}
+			} else {
+				if policy.isMatch("allow", consumer) {
+					return true
+				}
+			}
+		}
+		// if there isn't any policies, return true
+		return true
+	*/
 }
 
+/*
 func (p policy) isAllowPolicy() bool {
 	if len(p.Allow) > 0 {
 		return true
@@ -160,7 +187,7 @@ func (p policy) isMatch(kind string, consumer Consumer) bool {
 		}
 	}
 	return false
-}
+}*/
 
 type ServiceRepository interface {
 	Get(id string) (*service, error)

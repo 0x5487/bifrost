@@ -17,7 +17,7 @@ type consumerCollection struct {
 type Consumer struct {
 	ID           string            `json:"id" bson:"_id"`
 	App          string            `json:"app" bson:"app"`
-	Groups       []string          `json:"groups" bson:"groups"`
+	Roles        []string          `json:"roles" bson:"roles"`
 	Username     string            `json:"username" bson:"username"`
 	CustomID     string            `json:"custom_id" bson:"custom_id"`
 	CustomFields map[string]string `json:"custom_fields" bson:"custom_fields"`
