@@ -158,7 +158,7 @@ func main() {
 		options.AllowedMethods = []string{"GET", "POST", "PUT", "DELETE"}
 		options.AllowedHeaders = []string{"*"}
 		nap.Use(napnap.NewCors(options))
-		_logger.infof("cors was enabled: %v", strings.Join(options.AllowedOrigins[:], ","))
+		_logger.infof("cors was enabled: %v", strings.Join(_cors.AllowedOrigins[:], ","))
 	}
 
 	nap.UseFunc(identity)

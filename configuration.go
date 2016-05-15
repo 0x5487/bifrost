@@ -38,8 +38,7 @@ type Configuration struct {
 	ForwardRequestID bool     `yaml:"forward_requst_id"`
 	Data             DataSetting
 	Cors             struct {
-		Enable         bool     `yaml:"enable"`
-		AllowedOrigins []string `yaml:"allowed_origins"`
+		Enable bool `yaml:"enable"`
 	}
 	Gzip struct {
 		Enable bool `yaml:"enable"`
