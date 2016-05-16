@@ -6,15 +6,9 @@ import (
 	"time"
 
 	"github.com/satori/go.uuid"
-
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
-
-type policy struct {
-	Allow string `json:"allow,omitempty" bson:"allow,omitempty"`
-	Deny  string `json:"deny,omitempty" bson:"deny,omitempty"`
-}
 
 type upstream struct {
 	count         int
@@ -24,33 +18,20 @@ type upstream struct {
 	UpdatedAt     time.Time `json:"updated_at" bson:"-"`
 }
 
-type serviceCollection struct {
-	Count    int        `json:"count"`
-	Services []*service `json:"services"`
+type service struct {
+	sync.RWMutex
+	ID        string      `json:"id" bson:"_id"`
+	Name      string      `json:"name" `
+	Upstreams []*upstream `json:"upstreams"`
+	CreatedAt time.Time   `json:"created_at" bson:"created_at"`
+	UpdatedAt time.Time   `json:"updated_at" bson:"updated_at"`
 }
 
-func newServiesCollection() *serviceCollection {
+func newServiceCollection() *serviceCollection {
 	return &serviceCollection{
 		Count:    0,
 		Services: []*service{},
 	}
-}
-
-type service struct {
-	sync.RWMutex
-	ID               string      `json:"id" bson:"_id"`
-	Name             string      `json:"name" bson:"name"`
-	RequestHost      string      `json:"request_host" bson:"request_host"`
-	RequestPath      string      `json:"request_path" bson:"request_path"`
-	StripRequestPath bool        `json:"strip_request_path" bson:"strip_request_path"`
-	Upstreams        []*upstream `json:"upstreams" bson:"-"`
-	Redirect         bool        `json:"redirect" bson:"redirect"`
-	Authorization    bool        `json:"authorization" bson:"authorization"`
-	Whitelist        []string    `json:"whitelist" bson:"whitelist"`
-	//Policies         []policy  `json:"policies" bson:"policies"`
-	Weight    int       `json:"weight" bson:"weight"`
-	CreatedAt time.Time `json:"created_at" bson:"created_at"`
-	UpdatedAt time.Time `json:"updated_at" bson:"updated_at"`
 }
 
 func (s *service) registerUpstream(source *upstream) {
@@ -120,81 +101,17 @@ func (s *service) askForUpstream() *upstream {
 	return result
 }
 
-func (*service) isValid() bool {
-	return true
+type serviceCollection struct {
+	Count    int        `json:"count"`
+	Services []*service `json:"services"`
 }
-
-func (a service) isAllow(consumer Consumer) bool {
-	if a.Authorization == true && consumer.isAuthenticated() == false {
-		return false
-	}
-	if len(a.Whitelist) == 0 {
-		return true
-	}
-	if len(consumer.Roles) == 0 {
-		return false
-	}
-	for _, role := range consumer.Roles {
-		if contains(a.Whitelist, role) {
-			return true
-		}
-	}
-	return false
-	/*
-		for _, policy := range a.Policies {
-			if policy.isAllowPolicy() == false {
-				if policy.isMatch("deny", consumer) {
-					return false
-				}
-			} else {
-				if policy.isMatch("allow", consumer) {
-					return true
-				}
-			}
-		}
-		// if there isn't any policies, return true
-		return true
-	*/
-}
-
-/*
-func (p policy) isAllowPolicy() bool {
-	if len(p.Allow) > 0 {
-		return true
-	}
-	return false
-}
-
-func (p policy) isMatch(kind string, consumer Consumer) bool {
-	var rule string
-	if kind == "deny" {
-		rule = strings.ToLower(p.Deny)
-	}
-
-	if kind == "allow" {
-		rule = strings.ToLower(p.Allow)
-	}
-
-	if rule == "all" {
-		return true
-	}
-	terms := strings.Split(rule, ":")
-	if terms[0] == "g" {
-		for _, group := range consumer.Groups {
-			if group == terms[1] {
-				return true
-			}
-		}
-	}
-	return false
-}*/
 
 type ServiceRepository interface {
 	Get(id string) (*service, error)
 	GetByName(name string) (*service, error)
 	GetAll() ([]*service, error)
-	Insert(api *service) error
-	Update(api *service) error
+	Insert(source *service) error
+	Update(source *service) error
 	Delete(id string) error
 }
 
@@ -202,7 +119,7 @@ type serviceMongo struct {
 	connectionString string
 }
 
-func newAPIMongo(connectionString string) (*serviceMongo, error) {
+func newServiceMongo(connectionString string) (*serviceMongo, error) {
 	session, err := mgo.Dial(connectionString)
 	if err != nil {
 		panic(err)
@@ -222,130 +139,119 @@ func newAPIMongo(connectionString string) (*serviceMongo, error) {
 		return nil, err
 	}
 
-	weightIdx := mgo.Index{
-		Name:       "service_weight_idx",
-		Key:        []string{"-weight", "created_at"},
-		Background: true,
-		Sparse:     true,
-	}
-	err = c.EnsureIndex(weightIdx)
-	if err != nil {
-		return nil, err
-	}
-
 	return &serviceMongo{
 		connectionString: connectionString,
 	}, nil
 }
 
-func (ams *serviceMongo) newSession() (*mgo.Session, error) {
-	return mgo.Dial(ams.connectionString)
+func (sm *serviceMongo) newSession() (*mgo.Session, error) {
+	return mgo.Dial(sm.connectionString)
 }
 
-func (ams *serviceMongo) Get(id string) (*service, error) {
-	session, err := ams.newSession()
+func (sm *serviceMongo) Get(id string) (*service, error) {
+	session, err := sm.newSession()
 	if err != nil {
 		return nil, err
 	}
 	defer session.Close()
 
 	c := session.DB("bifrost").C("services")
-	api := service{}
-	err = c.FindId(id).One(&api)
+	service := service{}
+	err = c.FindId(id).One(&service)
 	if err != nil {
 		if err.Error() == "not found" {
 			return nil, nil
 		}
 		return nil, err
 	}
-	return &api, nil
+	return &service, nil
 }
 
-func (ams *serviceMongo) GetByName(name string) (*service, error) {
-	session, err := ams.newSession()
+func (sm *serviceMongo) GetByName(name string) (*service, error) {
+	session, err := sm.newSession()
 	if err != nil {
 		return nil, err
 	}
 	defer session.Close()
 
 	c := session.DB("bifrost").C("services")
-	api := service{}
-	err = c.Find(bson.M{"name": name}).One(&api)
+	service := service{}
+	err = c.Find(bson.M{"name": name}).One(&service)
 	if err != nil {
 		if err.Error() == "not found" {
 			return nil, nil
 		}
 		return nil, err
 	}
-	return &api, nil
+	return &service, nil
 }
 
-func (ams *serviceMongo) GetAll() ([]*service, error) {
-	session, err := ams.newSession()
+func (sm *serviceMongo) GetAll() ([]*service, error) {
+	session, err := sm.newSession()
 	if err != nil {
 		return nil, err
 	}
 	defer session.Close()
 
 	c := session.DB("bifrost").C("services")
-	apis := []*service{}
-	err = c.Find(bson.M{}).Sort("-weight", "+created_at").All(&apis)
+	services := []*service{}
+	err = c.Find(bson.M{}).All(&services)
 	if err != nil {
 		if err.Error() == "not found" {
 			return nil, nil
 		}
 		return nil, err
 	}
-	return apis, nil
+	return services, nil
 }
 
-func (ams *serviceMongo) Insert(api *service) error {
-	session, err := ams.newSession()
+func (sm *serviceMongo) Insert(source *service) error {
+	session, err := sm.newSession()
 	if err != nil {
 		return err
 	}
 	defer session.Close()
 
 	c := session.DB("bifrost").C("services")
-	api.ID = uuid.NewV4().String()
+	source.ID = uuid.NewV4().String()
 	now := time.Now().UTC()
-	api.CreatedAt = now
-	api.UpdatedAt = now
-	err = c.Insert(api)
+	source.CreatedAt = now
+	source.UpdatedAt = now
+	err = c.Insert(source)
 
 	if err != nil {
 		if strings.HasPrefix(err.Error(), "E11000") {
-			return AppError{ErrorCode: "invalid_data", Message: "The api already exits"}
+			return AppError{ErrorCode: "invalid_data", Message: "The service already exits"}
 		}
 		return err
 	}
 	return nil
 }
 
-func (ams *serviceMongo) Update(api *service) error {
-	if len(api.ID) == 0 {
+func (sm *serviceMongo) Update(source *service) error {
+	if len(source.ID) == 0 {
 		return AppError{ErrorCode: "invalid_data", Message: "id can't be empty or null."}
 	}
 	now := time.Now().UTC()
-	api.UpdatedAt = now
+	source.UpdatedAt = now
 
-	session, err := ams.newSession()
+	session, err := sm.newSession()
 	if err != nil {
 		return err
 	}
 	defer session.Close()
 
 	c := session.DB("bifrost").C("services")
-	colQuerier := bson.M{"_id": api.ID}
-	err = c.Update(colQuerier, api)
+	colQuerier := bson.M{"_id": source.ID}
+	err = c.Update(colQuerier, source)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (ams *serviceMongo) Delete(id string) error {
-	session, err := ams.newSession()
+func (sm *serviceMongo) Delete(id string) error {
+	session, err := sm.newSession()
 	if err != nil {
 		return err
 	}

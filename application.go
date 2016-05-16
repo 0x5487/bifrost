@@ -105,20 +105,6 @@ type ApiCount struct {
 	Count int `json:"count"`
 }
 
-func reloadService(repo ServiceRepository, source []*service) []*service {
-	services, err := repo.GetAll()
-	panicIf(err)
-
-	for _, svc := range source {
-		for _, newSvc := range services {
-			if svc.ID == newSvc.ID {
-				newSvc.Upstreams = svc.Upstreams
-			}
-		}
-	}
-	return services
-}
-
 type applocationLog struct {
 	Version      string `json:"version"`
 	Host         string `json:"host"`

@@ -63,18 +63,18 @@ func (p *proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	consumer := c.MustGet("consumer").(Consumer)
 
 	// find api entry which match the request.
-	var svc *service
-	for _, svcEntry := range _services {
+	var apiEntry *api
+	for _, apiElement := range _apis {
 		// ensure request host is match
-		if svcEntry.RequestHost != "*" && !strings.EqualFold(svcEntry.RequestHost, requestHost) {
+		if apiElement.RequestHost != "*" && !strings.EqualFold(apiElement.RequestHost, requestHost) {
 			continue
 		}
 		// ensure request path is match
-		if svcEntry.RequestPath != "*" && strings.HasPrefix(requestPath, svcEntry.RequestPath) == false {
+		if apiElement.RequestPath != "*" && strings.HasPrefix(requestPath, apiElement.RequestPath) == false {
 			continue
 		}
 		// ensure the consumer has access permission
-		if svcEntry.isAllow(consumer) == false {
+		if apiElement.isAllow(consumer) == false {
 			if consumer.isAuthenticated() {
 				c.SetStatus(403)
 				return
@@ -82,38 +82,66 @@ func (p *proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 			c.SetStatus(401)
 			return
 		}
-		svc = svcEntry
+		apiEntry = apiElement
 		break
 	}
 
 	// none of api enties are match
-	if svc == nil {
+	if apiEntry == nil {
 		next(c) // go to notFound middleware
 		return
 	}
 
-	_logger.debugf("service host: %s", svc.RequestHost)
-	_logger.debugf("service path: %s", svc.RequestPath)
+	_logger.debugf("api host: %s", apiEntry.RequestHost)
+	_logger.debugf("api path: %s", apiEntry.RequestPath)
 
-	// get upstream and exchange url
-	u := svc.askForUpstream()
-	if u == nil {
+	if len(apiEntry.TargetURL) == 0 && len(apiEntry.Service) == 0 {
 		// no upstreams are available
 		c.SetStatus(503)
 		return
 	}
-	_logger.debugf("upstream: %v", u.Name)
+
+	var targetURL string
+	if len(apiEntry.TargetURL) > 0 {
+		// TODO: api's targetURL is not used at the point
+	}
+
+	var svcEntry *service
+	var upstreamEntry *upstream
+	if len(apiEntry.Service) > 0 {
+		var svc *service
+		for _, svcElement := range _services {
+			if apiEntry.Service == svcElement.Name {
+				svc = svcElement
+			}
+		}
+		if svc == nil {
+			next(c) // go to notFound middleware
+			return
+		}
+		// get upstream and exchange url
+		u := svc.askForUpstream()
+		if u == nil {
+			// no upstreams are available
+			c.SetStatus(503)
+			return
+		}
+		_logger.debugf("upstream: %v", u.Name)
+		svcEntry = svc
+		upstreamEntry = u
+		targetURL = u.TargetURL
+	}
 
 	var url string
-	if svc.StripRequestPath {
-		prefix := strings.ToLower(svc.RequestPath)
+	if apiEntry.StripRequestPath {
+		prefix := strings.ToLower(apiEntry.RequestPath)
 		newPath := c.Request.URL.Path
 		if strings.HasPrefix(requestPath, prefix) {
 			newPath = c.Request.URL.Path[len(prefix):]
 		}
-		url = u.TargetURL + newPath
+		url = targetURL + newPath
 	} else {
-		url = u.TargetURL + c.Request.URL.Path
+		url = targetURL + c.Request.URL.Path
 	}
 
 	rawQuery := c.Request.URL.RawQuery
@@ -124,7 +152,7 @@ func (p *proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	_logger.debugf("URL: %s", url)
 
 	// redirect if needed
-	if svc.Redirect {
+	if apiEntry.Redirect {
 		_logger.debug("redirect to ", url)
 		c.Redirect(301, url)
 		return
@@ -178,9 +206,9 @@ func (p *proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	// send to target
 	resp, err := p.client.Do(outReq)
 	if err != nil {
-		// upsteam server is down
+		// if upsteam server is down
 		if strings.Contains(err.Error(), "No connection could be made") {
-			svc.unregisterUpstream(u)
+			svcEntry.unregisterUpstream(upstreamEntry)
 			p.Invoke(c, next) // resend
 			return
 		}

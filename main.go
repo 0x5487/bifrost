@@ -22,11 +22,13 @@ var (
 	_logger         *logger
 	_consumerRepo   ConsumerRepository
 	_tokenRepo      TokenRepository
-	_serviceRepo    ServiceRepository
+	_apiRepo        APIRepository
 	_corsRepo       CORSRepository
+	_serviceRepo    ServiceRepository
 	_status         *status
-	_services       []*service
+	_apis           []*api
 	_cors           *configCORS
+	_services       []*service
 	_accessLogsChan chan accessLog
 	_errorLogsChan  chan applocationLog
 )
@@ -88,7 +90,12 @@ func init() {
 			panic(err)
 		}
 
-		_serviceRepo, err = newAPIMongo(_config.Data.ConnectionString)
+		_apiRepo, err = newAPIMongo(_config.Data.ConnectionString)
+		if err != nil {
+			panic(err)
+		}
+
+		_serviceRepo, err = newServiceMongo(_config.Data.ConnectionString)
 		if err != nil {
 			panic(err)
 		}
@@ -102,8 +109,11 @@ func init() {
 	_app = newApplication()
 	_logger.infof("hostname: %v", _app.hostname)
 
-	// reload
-	_services = reloadService(_serviceRepo, _services)
+	// load api
+	_apis, err = _apiRepo.GetAll()
+	panicIf(err)
+	_services, err = _serviceRepo.GetAll()
+	panicIf(err)
 }
 
 func main() {
@@ -174,7 +184,6 @@ func main() {
 
 	adminRouter := napnap.NewRouter()
 	adminRouter.Get("/status", getStatus)
-	adminRouter.Put("/reload", reloadServiceEndpoint)
 
 	// consumer endpoints
 	adminRouter.Get("/v1/consumers/count", getConsumerCountEndpoint)
@@ -191,17 +200,25 @@ func main() {
 	adminRouter.Put("/v1/tokens", updateTokensEndpoint)
 	adminRouter.Delete("/v1/tokens", deleteTokensEndpoint)
 
-	// service endpoints
-	adminRouter.Put("/v1/services/reload", reloadServiceEndpoint)
-	adminRouter.Get("/v1/services/:service_id", getServiceEndpoint)
-	adminRouter.Delete("/v1/services/:service_id", deleteServiceEndpoint)
-	adminRouter.Put("/v1/services/:service_id", updateServiceEndpoint)
-	adminRouter.Get("/v1/services", listServicesEndpoint)
-	adminRouter.Post("/v1/services", createServiceEndpoint)
+	// api endpoints
+	adminRouter.Put("/v1/apis/reload", reloadAPIEndpoint)
+	adminRouter.Get("/v1/apis/:api_id", getAPIEndpoint)
+	adminRouter.Delete("/v1/apis/:api_id", deleteAPIEndpoint)
+	adminRouter.Put("/v1/apis/:api_id", updateAPIEndpoint)
+	adminRouter.Get("/v1/apis", listAPIEndpoint)
+	adminRouter.Post("/v1/apis", createAPIEndpoint)
 
 	// upstream endpoints
-	adminRouter.Delete("/v1/services/:service_id/upstreams/:upstream_id", unRegisterUpstreamEndpoint)
-	adminRouter.Put("/v1/services/:service_id/upstreams", registerUpstreamEndpoint)
+	adminRouter.Delete("/v1/services/:service_id/upstreams/:upstream_id", unregisterServiceUpstreamEndpoint)
+	adminRouter.Put("/v1/services/:service_id/upstreams", registerServiceUpstreamEndpoint)
+
+	// service endpoints
+	adminRouter.Put("/v1/services/reload", reloadServiceEndpoint)
+	adminRouter.Delete("/v1/services/:service_id", deleteServicesEndpoint)
+	adminRouter.Put("/v1/services/:service_id", updateServicesEndpoint)
+	adminRouter.Get("/v1/services/:service_id", getServicesEndpoint)
+	adminRouter.Post("/v1/services", createServicesEndpoint)
+	adminRouter.Get("/v1/services", listServicesEndpoint)
 
 	// config endpoints
 	adminRouter.Put("/v1/configs/cors/reload", reloadCORSEndpoint)
