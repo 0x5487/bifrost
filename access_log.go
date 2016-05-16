@@ -47,7 +47,7 @@ func (am *accessLogMiddleware) Invoke(c *napnap.Context, next napnap.HandlerFunc
 	accessLog := accessLog{
 		Version:       "1.1",
 		Host:          _app.hostname,
-		ShortMessage:  fmt.Sprintf("%s %s", c.Request.Method, c.Request.URL.Path),
+		ShortMessage:  fmt.Sprintf("%s %s %s", c.Request.Method, c.Request.URL.Path, c.Request.Proto),
 		Timestamp:     startTime.Unix(),
 		RequestID:     c.MustGet("request-id").(string),
 		Origin:        c.RequestHeader("Origin"),
