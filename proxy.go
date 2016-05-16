@@ -194,6 +194,10 @@ func (p *proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 		if len(consumer.CustomID) > 0 {
 			outReq.Header.Set("X-Consumer-Custom-Id", consumer.CustomID)
 		}
+		if len(consumer.Roles) > 0 {
+			roles := strings.Join(consumer.Roles, ",")
+			outReq.Header.Set("X-Consumer-Roles", roles)
+		}
 		if len(consumer.CustomFields) > 0 {
 			for key, field := range consumer.CustomFields {
 				if len(key) > 0 && len(field) > 0 {
