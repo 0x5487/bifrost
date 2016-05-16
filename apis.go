@@ -29,7 +29,7 @@ func newAPICollection() *apiCollection {
 }
 
 type api struct {
-	sync.RWMutex
+	sync.RWMutex     `json:"-" bson:"-"`
 	ID               string    `json:"id" bson:"_id"`
 	Name             string    `json:"name" bson:"name"`
 	RequestHost      string    `json:"request_host" bson:"request_host"`

@@ -133,3 +133,7 @@ func (cm *CORSMongo) Update(source *configCORS) error {
 func (cm *CORSMongo) Delete() error {
 	return nil
 }
+
+func verifyOrigin(origin string) bool {
+	return _cors.verifyOrigin(origin)
+}

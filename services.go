@@ -11,7 +11,7 @@ import (
 )
 
 type upstream struct {
-	count         int
+	count         int       `json:"-" bson:"-"`
 	Name          string    `json:"name" bson:"-"`
 	TargetURL     string    `json:"target_url" bson:"-"`
 	TotalRequests uint64    `json:"total_requests" bson:"-"`
@@ -19,12 +19,12 @@ type upstream struct {
 }
 
 type service struct {
-	sync.RWMutex
-	ID        string      `json:"id" bson:"_id"`
-	Name      string      `json:"name" `
-	Upstreams []*upstream `json:"upstreams"`
-	CreatedAt time.Time   `json:"created_at" bson:"created_at"`
-	UpdatedAt time.Time   `json:"updated_at" bson:"updated_at"`
+	sync.RWMutex `json:"-" bson:"-"`
+	ID           string      `json:"id" bson:"_id"`
+	Name         string      `json:"name" `
+	Upstreams    []*upstream `json:"upstreams"`
+	CreatedAt    time.Time   `json:"created_at" bson:"created_at"`
+	UpdatedAt    time.Time   `json:"updated_at" bson:"updated_at"`
 }
 
 func newServiceCollection() *serviceCollection {

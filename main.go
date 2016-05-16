@@ -89,17 +89,14 @@ func init() {
 		if err != nil {
 			panic(err)
 		}
-
 		_apiRepo, err = newAPIMongo(_config.Data.ConnectionString)
 		if err != nil {
 			panic(err)
 		}
-
 		_serviceRepo, err = newServiceMongo(_config.Data.ConnectionString)
 		if err != nil {
 			panic(err)
 		}
-
 		_corsRepo, err = newCORSMongo(_config.Data.ConnectionString)
 		if err != nil {
 			panic(err)
@@ -164,7 +161,7 @@ func main() {
 		if _cors == nil {
 			_cors = newConfigCORS()
 		}
-		options.AllowOriginFunc = _cors.verifyOrigin
+		options.AllowOriginFunc = verifyOrigin
 		options.AllowedMethods = []string{"GET", "POST", "PUT", "DELETE"}
 		options.AllowedHeaders = []string{"*"}
 		nap.Use(napnap.NewCors(options))
