@@ -225,7 +225,9 @@ func (p *proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	// set error message
 	if !(resp.StatusCode >= 200 && resp.StatusCode < 400) {
 		c.Set("status_code", resp.StatusCode)
-		c.Set("error", string(body))
+		err := string(body)
+		c.Set("error", err)
+		_logger.debugf("error: %v", err)
 	}
 
 	if _config.CustomErrors && resp.StatusCode == 500 {

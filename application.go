@@ -113,9 +113,7 @@ type applocationLog struct {
 	FullMessage  string `json:"full_message"`
 	Timestamp    int64  `json:"timestamp"`
 	RequestID    string `json:"_request_id"`
-	App          string `json:"_app"`
-	Domain       string `json:"_domain"`
-	ClientIP     string `json:"_client_ip"`
+	Facility     string `json:"_facility"`
 }
 
 func writeApplicationLog(connectionString string) {

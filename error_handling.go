@@ -49,14 +49,12 @@ func (m *errorLogMiddleware) Invoke(c *napnap.Context, next napnap.HandlerFunc) 
 				appLog := applocationLog{
 					Version:      "1.1",
 					Host:         _app.hostname,
-					App:          _app.name,
-					Domain:       c.Request.Host,
+					Facility:     _app.name,
 					Level:        3,
 					RequestID:    c.MustGet("request-id").(string),
 					ShortMessage: fmt.Sprintf("%s %s", c.Request.Method, c.Request.URL.Path),
 					FullMessage:  fmt.Sprintf("error message: %s \n request info: %s \n ", err.Error(), string(requestDump)),
 					Timestamp:    time.Now().Unix(),
-					ClientIP:     getClientIP(c.RemoteIPAddress()),
 				}
 
 				select {
