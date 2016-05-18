@@ -54,7 +54,7 @@ func (m *errorLogMiddleware) Invoke(c *napnap.Context, next napnap.HandlerFunc) 
 					RequestID:    c.MustGet("request-id").(string),
 					ShortMessage: fmt.Sprintf("%s %s", c.Request.Method, c.Request.URL.Path),
 					FullMessage:  fmt.Sprintf("error message: %s \n request info: %s \n ", err.Error(), string(requestDump)),
-					Timestamp:    time.Now().Unix(),
+					Timestamp:    time.Now().UnixNano() / int64(time.Millisecond),
 				}
 
 				select {
