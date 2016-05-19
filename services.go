@@ -16,12 +16,14 @@ type upstream struct {
 	TargetURL     string    `json:"target_url" bson:"-"`
 	TotalRequests uint64    `json:"total_requests" bson:"-"`
 	UpdatedAt     time.Time `json:"updated_at" bson:"-"`
+	State         string    `json:"state" bson:"-"`
 }
 
 type service struct {
 	sync.RWMutex `json:"-" bson:"-"`
 	ID           string      `json:"id" bson:"_id"`
 	Name         string      `json:"name" `
+	Port         int         `json:"port" `
 	Upstreams    []*upstream `json:"upstreams"`
 	CreatedAt    time.Time   `json:"created_at" bson:"created_at"`
 	UpdatedAt    time.Time   `json:"updated_at" bson:"updated_at"`

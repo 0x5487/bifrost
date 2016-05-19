@@ -16,13 +16,14 @@ type accessLog struct {
 	Version       string `json:"version"`
 	Host          string `json:"host"`
 	ShortMessage  string `json:"short_message"`
-	FullMessage   string `json:"full_message"`
+	FullMessage   string `json:"full_message,omitempty"`
 	Timestamp     int64  `json:"timestamp"`
 	RequestID     string `json:"_request_id"`
 	Origin        string `json:"_origin"`
 	Status        int    `json:"_status"`
 	ContentLength int    `json:"_content_length"`
 	ClientIP      string `json:"_client_ip"`
+	ConsumerID    string `json:"_consumer_id,omitempty"`
 	Duration      int64  `json:"_duration"`
 	UserAgent     string `json:"_userAgent"`
 }
@@ -56,6 +57,11 @@ func (am *accessLogMiddleware) Invoke(c *napnap.Context, next napnap.HandlerFunc
 		ClientIP:      getClientIP(c.RemoteIPAddress()),
 		UserAgent:     c.RequestHeader("User-Agent"),
 		Duration:      int64(time.Since(startTime) / time.Millisecond),
+	}
+
+	consumer, ok := c.MustGet("consumer").(Consumer)
+	if ok && len(consumer.ID) > 0 {
+		accessLog.ConsumerID = consumer.ID
 	}
 
 	if !(c.Writer.Status() >= 200 && c.Writer.Status() < 400) {
