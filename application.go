@@ -106,14 +106,14 @@ type ApiCount struct {
 }
 
 type applocationLog struct {
-	Version      string `json:"version"`
-	Host         string `json:"host"`
-	Level        int    `json:"level"`
-	ShortMessage string `json:"short_message"`
-	FullMessage  string `json:"full_message"`
-	Timestamp    int64  `json:"timestamp"`
-	RequestID    string `json:"_request_id"`
-	Facility     string `json:"_facility"`
+	Version      string  `json:"version"`
+	Host         string  `json:"host"`
+	Level        int     `json:"level"`
+	ShortMessage string  `json:"short_message"`
+	FullMessage  string  `json:"full_message"`
+	Timestamp    float64 `json:"timestamp"`
+	RequestID    string  `json:"_request_id"`
+	Facility     string  `json:"_facility"`
 }
 
 func writeApplicationLog(connectionString string) {

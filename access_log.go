@@ -13,25 +13,25 @@ import (
 )
 
 type accessLog struct {
-	Version       string `json:"version"`
-	Host          string `json:"host"`
-	ShortMessage  string `json:"short_message"`
-	FullMessage   string `json:"full_message,omitempty"`
-	Timestamp     int64  `json:"timestamp"`
-	RequestID     string `json:"_request_id"`
-	Origin        string `json:"_origin"`
-	Status        int    `json:"_status"`
-	ContentLength int    `json:"_content_length"`
-	ClientIP      string `json:"_client_ip"`
-	ConsumerID    string `json:"_consumer_id,omitempty"`
-	Duration      int64  `json:"_duration"`
-	UserAgent     string `json:"_userAgent"`
+	Version       string  `json:"version"`
+	Host          string  `json:"host"`
+	ShortMessage  string  `json:"short_message"`
+	FullMessage   string  `json:"full_message"`
+	Timestamp     float64 `json:"timestamp"`
+	RequestID     string  `json:"_request_id"`
+	Origin        string  `json:"_origin"`
+	Path          string  `json:"_path"`
+	Status        int     `json:"_status"`
+	ContentLength int     `json:"_content_length"`
+	ClientIP      string  `json:"_client_ip"`
+	ConsumerID    string  `json:"_consumer_id"`
+	Duration      int64   `json:"_duration"`
+	UserAgent     string  `json:"_userAgent"`
 }
 
 func newAccessLog() *accessLog {
 	return &accessLog{
-		Version:   "1.1",
-		Timestamp: time.Now().Unix(),
+		Version: "1.1",
 	}
 }
 
@@ -45,23 +45,27 @@ func newAccessLogMiddleware() *accessLogMiddleware {
 func (am *accessLogMiddleware) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	startTime := time.Now()
 	next(c)
+	duration := int64(time.Since(startTime) / time.Millisecond)
 	accessLog := accessLog{
 		Version:       "1.1",
 		Host:          _app.hostname,
-		ShortMessage:  fmt.Sprintf("%s %s %s", c.Request.Method, c.Request.URL.Path, c.Request.Proto),
-		Timestamp:     startTime.UnixNano() / int64(time.Millisecond),
+		ShortMessage:  fmt.Sprintf("%s %s [%d] %dms", c.Request.Method, c.Request.URL.Path, c.Writer.Status(), duration),
+		Timestamp:     float64(time.Now().UnixNano()) / float64(time.Second),
 		RequestID:     c.MustGet("request-id").(string),
 		Origin:        c.RequestHeader("Origin"),
+		Path:          c.Request.URL.Path,
 		Status:        c.Writer.Status(),
 		ContentLength: c.Writer.ContentLength(),
 		ClientIP:      getClientIP(c.RemoteIPAddress()),
 		UserAgent:     c.RequestHeader("User-Agent"),
-		Duration:      int64(time.Since(startTime) / time.Millisecond),
+		Duration:      duration,
 	}
 
-	consumer, ok := c.MustGet("consumer").(Consumer)
-	if ok && len(consumer.ID) > 0 {
-		accessLog.ConsumerID = consumer.ID
+	cs, exist := c.Get("consumer")
+	if exist {
+		if consumer, ok := cs.(Consumer); ok && len(consumer.ID) > 0 {
+			accessLog.ConsumerID = consumer.ID
+		}
 	}
 
 	if !(c.Writer.Status() >= 200 && c.Writer.Status() < 400) {
