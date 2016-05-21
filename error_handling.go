@@ -3,22 +3,21 @@ package main
 import (
 	"fmt"
 	"net/http/httputil"
-	"time"
 
 	"github.com/jasonsoft/napnap"
 )
 
-type errorLogMiddleware struct {
-	enableErrorLog bool
+type applicationLogMiddleware struct {
+	writeLog bool
 }
 
-func newErrorLogMiddleware(enableErrorLog bool) *errorLogMiddleware {
-	return &errorLogMiddleware{
-		enableErrorLog: enableErrorLog,
+func newApplicationLogMiddleware(writeLog bool) *applicationLogMiddleware {
+	return &applicationLogMiddleware{
+		writeLog: writeLog,
 	}
 }
 
-func (m *errorLogMiddleware) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
+func (m *applicationLogMiddleware) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	defer func() {
 		// we only handle error for bifrost application and don't handle can't error from upstream.
 		if r := recover(); r != nil {
@@ -44,23 +43,17 @@ func (m *errorLogMiddleware) Invoke(c *napnap.Context, next napnap.HandlerFunc) 
 			c.JSON(500, err)
 
 			// write error log
-			if m.enableErrorLog {
-				requestDump, err := httputil.DumpRequest(c.Request, true)
-				appLog := applocationLog{
-					Version:      "1.1",
-					Host:         _app.hostname,
-					Facility:     _app.name,
-					Level:        3,
-					RequestID:    c.MustGet("request-id").(string),
-					ShortMessage: fmt.Sprintf("%s %s", c.Request.Method, c.Request.URL.Path),
-					FullMessage:  fmt.Sprintf("error message: %s \n request info: %s \n ", err.Error(), string(requestDump)),
-					Timestamp:    float64(time.Now().UnixNano()) / float64(time.Second),
-				}
+			if m.writeLog {
+				requestDump, _ := httputil.DumpRequest(c.Request, true)
+				appLog := newGelfMessage(_app.hostname, _app.name, "applications", 3)
+				appLog.CustomFields["request_id"] = c.MustGet("request-id").(string)
+				appLog.ShortMessage = err.Error()
+				appLog.FullMessage = fmt.Sprintf("request info: %s", string(requestDump))
 
 				select {
-				case _errorLogsChan <- appLog:
+				case _messageChan <- appLog:
 				default:
-					_logger.debug("error queue was full")
+					_logger.debug("message queue was full")
 				}
 			}
 		}

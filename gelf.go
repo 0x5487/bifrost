@@ -11,6 +11,7 @@ import (
 	"log"
 	"math"
 	"net"
+	"time"
 )
 
 const (
@@ -18,6 +19,49 @@ const (
 	defaultMaxChunkSizeWan = 1420
 	defaultMaxChunkSizeLan = 8154
 )
+
+type gelfMessage struct {
+	Version      string
+	Host         string
+	Level        int
+	ShortMessage string
+	FullMessage  string
+	Timestamp    float64
+	Facility     string
+	LoggerName   string
+	CustomFields map[string]interface{}
+}
+
+func newGelfMessage(host string, appName string, loggerName string, level int) *gelfMessage {
+	return &gelfMessage{
+		Version:      "1.1",
+		LoggerName:   loggerName,
+		Host:         host,
+		Facility:     appName,
+		Timestamp:    float64(time.Now().UnixNano()) / float64(time.Second),
+		Level:        level,
+		CustomFields: make(map[string]interface{}),
+	}
+}
+
+func (m *gelfMessage) toByte() []byte {
+	items := make(map[string]interface{})
+	items["version"] = m.Version
+	items["host"] = m.Host
+	items["level"] = m.Level
+	items["short_message"] = m.ShortMessage
+	items["full_message"] = m.FullMessage
+	items["timestamp"] = m.Timestamp
+	items["_facility"] = m.Facility
+	items["_logger_name"] = m.LoggerName
+
+	for k, v := range m.CustomFields {
+		items["_"+k] = v
+	}
+
+	payload, _ := json.Marshal(items)
+	return payload
+}
 
 type gelfConfig struct {
 	ConnectionString string

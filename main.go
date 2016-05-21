@@ -16,21 +16,20 @@ import (
 )
 
 var (
-	_app            *application
-	_httpClient     *http.Client
-	_config         Configuration
-	_logger         *logger
-	_consumerRepo   ConsumerRepository
-	_tokenRepo      TokenRepository
-	_apiRepo        APIRepository
-	_corsRepo       CORSRepository
-	_serviceRepo    ServiceRepository
-	_status         *status
-	_apis           []*api
-	_cors           *configCORS
-	_services       []*service
-	_accessLogsChan chan accessLog
-	_errorLogsChan  chan applocationLog
+	_app          *application
+	_httpClient   *http.Client
+	_config       Configuration
+	_logger       *logger
+	_consumerRepo ConsumerRepository
+	_tokenRepo    TokenRepository
+	_apiRepo      APIRepository
+	_corsRepo     CORSRepository
+	_serviceRepo  ServiceRepository
+	_status       *status
+	_apis         []*api
+	_cors         *configCORS
+	_services     []*service
+	_messageChan  chan *gelfMessage
 )
 
 func init() {
@@ -118,25 +117,29 @@ func main() {
 	nap.ForwardRemoteIpAddress = true
 	nap.UseFunc(requestIDMiddleware())
 
-	// set access log
-	if _config.Logs.AccessLog.Type == "graylog" && len(_config.Logs.AccessLog.ConnectionString) > 0 {
-		_accessLogsChan = make(chan accessLog, 20000)
-		nap.Use(newAccessLogMiddleware())
-		go writeAccessLog(_config.Logs.AccessLog.ConnectionString)
-		_logger.infof("access log were enabled and connection string is %s", _config.Logs.AccessLog.ConnectionString)
+	// set logs
+	if _config.Logs.Target.Type == "gelf" && len(_config.Logs.Target.ConnectionString) > 0 {
+		_messageChan = make(chan *gelfMessage, 20000)
+		go writeAccessLog(_config.Logs.Target.ConnectionString)
+		_logger.infof("log was enabled and connection string is %s", _config.Logs.Target.ConnectionString)
+
+		// set access log
+		if _config.Logs.AccessLog {
+			nap.Use(newAccessLogMiddleware())
+			_logger.info("access log was enabled")
+		}
+		// set application log
+		if _config.Logs.ApplicationLog {
+			nap.Use(newApplicationLogMiddleware(true))
+			_logger.info("application log was enabled")
+		} else {
+			nap.Use(newApplicationLogMiddleware(false))
+		}
 	}
 
 	// set custom errors
 	if _config.CustomErrors {
 		nap.Use(newCustomErrorsMiddleware())
-	}
-
-	// set error logger
-	nap.Use(newErrorLogMiddleware(true))
-	if _config.Logs.ApplicationLog.Type == "graylog" && len(_config.Logs.ApplicationLog.ConnectionString) > 0 {
-		_errorLogsChan = make(chan applocationLog, 10000)
-		go writeApplicationLog(_config.Logs.ApplicationLog.ConnectionString)
-		_logger.infof("application log were enabled and connection string is %s", _config.Logs.ApplicationLog.ConnectionString)
 	}
 
 	nap.Use(_app)
@@ -175,7 +178,7 @@ func main() {
 	// admin endpoints
 	adminNap := napnap.New()
 	adminNap.Use(napnap.NewHealth())
-	adminNap.Use(newErrorLogMiddleware(false))
+	adminNap.Use(newApplicationLogMiddleware(false))
 	adminNap.UseFunc(requestIDMiddleware())
 	adminNap.UseFunc(auth) // verify all request which send to admin api and ensure the caller has valid admin token.
 

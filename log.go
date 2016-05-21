@@ -2,8 +2,10 @@ package main
 
 import (
 	"log"
-
-	"gopkg.in/mgo.v2"
+	"net"
+	"net/url"
+	"strings"
+	"time"
 )
 
 const (
@@ -72,25 +74,62 @@ func (l *logger) fatalf(format string, v ...interface{}) {
 	}
 }
 
-// TODO: the following code needs to be refactored
-type loggerMongo struct {
-}
-
-func newloggerMongo() *loggerMongo {
-	//create index
-	return &loggerMongo{}
-}
-
-func (lm *loggerMongo) writeErrorLog(errorlog AppError) {
-	session, err := mgo.Dial(_config.Logs.ApplicationLog.ConnectionString)
-	if err != nil {
-		panic(err)
+func writeAccessLog(connectionString string) {
+	url, err := url.Parse(connectionString)
+	panicIf(err)
+	var conn net.Conn
+	if strings.EqualFold(url.Scheme, "tcp") {
+		conn, err = net.Dial("tcp", url.Host)
+		if err != nil {
+			_logger.errorf("access log connection was failed %v", err)
+		}
+	} else {
+		conn, err = net.Dial("udp", url.Host)
+		if err != nil {
+			_logger.errorf("access log connection was failed %v", err)
+		}
 	}
-	defer session.Close()
-	c := session.DB("bifrost").C("error_log")
 
-	err = c.Insert(errorlog)
-	if err != nil {
-		_logger.debug(err)
+	// check connection status every 5 seconds
+	var emptyByteArray []byte
+	go func() {
+		for {
+			if conn != nil {
+				_, err = conn.Write(emptyByteArray)
+				if err != nil {
+					conn = nil
+				}
+			} else {
+				// TODO: tcp is hard-code, we need to remove that
+				newConn, err := net.Dial("tcp", url.Host)
+				if err == nil {
+					conn = newConn
+				}
+			}
+			time.Sleep(5 * time.Second)
+		}
+	}()
+
+	/*
+		g := newGelf(gelfConfig{
+			ConnectionString: connectionString,
+		})
+	*/
+	var empty byte
+	for {
+		select {
+		case message := <-_messageChan:
+			go func(msg *gelfMessage) {
+				if conn != nil {
+					payload := msg.toByte()
+					payload = append(payload, empty) // when we use tcp, we need to add null byte in the end.
+					//g.log(payload)
+					_logger.debugf("[%v]payload size: %v", msg.LoggerName, len(payload)) // TODO: output is weird
+					conn.Write(payload)
+				}
+			}(message)
+		default:
+			time.Sleep(5 * time.Second)
+		}
 	}
 }

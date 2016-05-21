@@ -1,12 +1,8 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"net"
 	"net/http/httputil"
-	"net/url"
-	"strings"
 	"time"
 
 	"github.com/jasonsoft/napnap"
@@ -46,25 +42,21 @@ func (am *accessLogMiddleware) Invoke(c *napnap.Context, next napnap.HandlerFunc
 	startTime := time.Now()
 	next(c)
 	duration := int64(time.Since(startTime) / time.Millisecond)
-	accessLog := accessLog{
-		Version:       "1.1",
-		Host:          _app.hostname,
-		ShortMessage:  fmt.Sprintf("%s %s [%d] %dms", c.Request.Method, c.Request.URL.Path, c.Writer.Status(), duration),
-		Timestamp:     float64(time.Now().UnixNano()) / float64(time.Second),
-		RequestID:     c.MustGet("request-id").(string),
-		Origin:        c.RequestHeader("Origin"),
-		Path:          c.Request.URL.Path,
-		Status:        c.Writer.Status(),
-		ContentLength: c.Writer.ContentLength(),
-		ClientIP:      getClientIP(c.RemoteIPAddress()),
-		UserAgent:     c.RequestHeader("User-Agent"),
-		Duration:      duration,
-	}
+	accessLog := newGelfMessage(_app.hostname, _app.name, "access", 6)
+	accessLog.CustomFields["request_id"] = c.MustGet("request-id").(string)
+	accessLog.ShortMessage = fmt.Sprintf("%s %s [%d] %dms", c.Request.Method, c.Request.URL.Path, c.Writer.Status(), duration)
+	accessLog.CustomFields["origin"] = c.RequestHeader("Origin")
+	accessLog.CustomFields["path"] = c.Request.URL.Path
+	accessLog.CustomFields["status"] = c.Writer.Status()
+	accessLog.CustomFields["content_length"] = c.Writer.ContentLength()
+	accessLog.CustomFields["client_ip"] = getClientIP(c.RemoteIPAddress())
+	accessLog.CustomFields["user_agent"] = c.RequestHeader("User-Agent")
+	accessLog.CustomFields["duration"] = duration
 
 	cs, exist := c.Get("consumer")
 	if exist {
 		if consumer, ok := cs.(Consumer); ok && len(consumer.ID) > 0 {
-			accessLog.ConsumerID = consumer.ID
+			accessLog.CustomFields["ConsumerID"] = consumer.ID
 		}
 	}
 
@@ -73,81 +65,20 @@ func (am *accessLogMiddleware) Invoke(c *napnap.Context, next napnap.HandlerFunc
 		respMsg, _ := c.Get("error")
 		if respMsg != nil {
 			respMessage := respMsg.(string)
-			fullMessage := fmt.Sprintf("Upsteam response: %s \n\nRequest info: %s \n ", respMessage, string(requestDump))
-			accessLog.FullMessage = fullMessage
+			accessLog.FullMessage = fmt.Sprintf("Upsteam response: %s \n\nRequest info: %s \n ", respMessage, string(requestDump))
 		}
 	}
 
 	select {
-	case _accessLogsChan <- accessLog:
+	case _messageChan <- accessLog:
 	default:
-		_logger.debug("access log queue was full")
+		_logger.debug("message queue was full")
 	}
 }
 
 func listQueueCount() {
 	for {
-		_logger.debug(fmt.Sprintf("count: %d", len(_accessLogsChan)))
+		_logger.debug(fmt.Sprintf("count: %d", len(_messageChan)))
 		time.Sleep(1 * time.Second)
-	}
-}
-
-func writeAccessLog(connectionString string) {
-	url, err := url.Parse(connectionString)
-	panicIf(err)
-	var conn net.Conn
-	if strings.EqualFold(url.Scheme, "tcp") {
-		conn, err = net.Dial("tcp", url.Host)
-		if err != nil {
-			_logger.errorf("access log connection was failed %v", err)
-		}
-	} else {
-		conn, err = net.Dial("udp", url.Host)
-		if err != nil {
-			_logger.errorf("access log connection was failed %v", err)
-		}
-	}
-
-	// check connection status every 5 seconds
-	var emptyByteArray []byte
-	go func() {
-		for {
-			if conn != nil {
-				_, err = conn.Write(emptyByteArray)
-				if err != nil {
-					conn = nil
-				}
-			} else {
-				// TODO: tcp is hard-code, we need to remove that
-				newConn, err := net.Dial("tcp", url.Host)
-				if err == nil {
-					conn = newConn
-				}
-			}
-			time.Sleep(5 * time.Second)
-		}
-	}()
-
-	/*
-		g := newGelf(gelfConfig{
-			ConnectionString: connectionString,
-		})
-	*/
-	var empty byte
-	for {
-		select {
-		case logElement := <-_accessLogsChan:
-			go func(log accessLog) {
-				if conn != nil {
-					payload, _ := json.Marshal(log)
-					payload = append(payload, empty) // when we use tcp, we need to add null byte in the end.
-					//g.log(payload)
-					_logger.debugf("payload size: %v", len(payload))
-					conn.Write(payload)
-				}
-			}(logElement)
-		default:
-			time.Sleep(5 * time.Second)
-		}
 	}
 }

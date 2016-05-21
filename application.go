@@ -1,12 +1,8 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"net"
-	"net/url"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -62,6 +58,7 @@ func (a *application) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 }
 
 func notFound(c *napnap.Context, next napnap.HandlerFunc) {
+	_logger.debug("not found")
 	c.SetStatus(404)
 }
 
@@ -103,68 +100,4 @@ func (e AppError) Error() string {
 
 type ApiCount struct {
 	Count int `json:"count"`
-}
-
-type applocationLog struct {
-	Version      string  `json:"version"`
-	Host         string  `json:"host"`
-	Level        int     `json:"level"`
-	ShortMessage string  `json:"short_message"`
-	FullMessage  string  `json:"full_message"`
-	Timestamp    float64 `json:"timestamp"`
-	RequestID    string  `json:"_request_id"`
-	Facility     string  `json:"_facility"`
-}
-
-func writeApplicationLog(connectionString string) {
-	url, err := url.Parse(connectionString)
-	panicIf(err)
-	var conn net.Conn
-	if strings.EqualFold(url.Scheme, "tcp") {
-		conn, err = net.Dial("tcp", url.Host)
-		if err != nil {
-			_logger.errorf("application log connection was failed %v", err)
-		}
-	} else {
-		conn, err = net.Dial("udp", url.Host)
-		if err != nil {
-			_logger.errorf("application log connection was failed %v", err)
-		}
-	}
-
-	// check connection status every 5 seconds
-	var emptyByteArray []byte
-	go func() {
-		for {
-			if conn != nil {
-				_, err = conn.Write(emptyByteArray)
-				if err != nil {
-					conn = nil
-				}
-			} else {
-				// TODO: tcp is hard-code, we need to remove that
-				newConn, err := net.Dial("tcp", url.Host)
-				if err == nil {
-					conn = newConn
-				}
-			}
-			time.Sleep(5 * time.Second)
-		}
-	}()
-
-	var empty byte
-	for {
-		select {
-		case logElement := <-_errorLogsChan:
-			go func(log applocationLog) {
-				if conn != nil {
-					payload, _ := json.Marshal(log)
-					payload = append(payload, empty) // when we use tcp, we need to add null byte in the end.
-					conn.Write(payload)
-				}
-			}(logElement)
-		default:
-			time.Sleep(5 * time.Second)
-		}
-	}
 }

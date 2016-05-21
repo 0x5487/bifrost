@@ -116,13 +116,16 @@ func (p *proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 			}
 		}
 		if svc == nil {
-			next(c) // go to notFound middleware
+			// no services were found
+			_logger.debug("services not found")
+			c.SetStatus(503)
 			return
 		}
 		// get upstream and exchange url
 		u := svc.askForUpstream()
 		if u == nil {
 			// no upstreams are available
+			_logger.debug("upstream not found")
 			c.SetStatus(503)
 			return
 		}

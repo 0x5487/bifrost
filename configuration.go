@@ -22,14 +22,13 @@ type Logs struct {
 type Configuration struct {
 	Debug bool `yaml:"debug"`
 	Logs  struct {
-		AccessLog struct {
+		Target struct {
+			Name             string `yaml:"name"`
 			Type             string `yaml:"type"`
 			ConnectionString string `yaml:"connection_string"`
-		} `yaml:"access_log"`
-		ApplicationLog struct {
-			Type             string `yaml:"type"`
-			ConnectionString string `yaml:"connection_string"`
-		} `yaml:"application_log"`
+		} `yaml:"target"`
+		AccessLog      bool `yaml:"access_log"`
+		ApplicationLog bool `yaml:"application_log"`
 	}
 	CustomErrors     bool     `yaml:"custom_errors"`
 	Binds            []string `yaml:"binds"`
