@@ -1,15 +1,10 @@
 package main
 
-import (
-	"errors"
-
-	"github.com/jasonsoft/napnap"
-)
+import "github.com/jasonsoft/napnap"
 
 func identity(c *napnap.Context, next napnap.HandlerFunc) {
 	key := c.Request.Header.Get("Authorization")
 	var consumer Consumer
-	panic(errors.New("ss"))
 	if len(key) == 0 {
 		consumer = Consumer{}
 		_logger.debug("no key")
