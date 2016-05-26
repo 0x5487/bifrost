@@ -213,10 +213,15 @@ func (p *proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	// send to target
 	resp, err := p.client.Do(outReq)
 	if err != nil {
-		// if upsteam server is down
+		// upsteam server is down
 		if strings.Contains(err.Error(), "No connection could be made") {
 			svcEntry.unregisterUpstream(upstreamEntry)
 			p.Invoke(c, next) // resend
+			return
+		}
+		// upstream server is timeout
+		if strings.Contains(err.Error(), "request canceled while waiting") {
+			c.SetStatus(504)
 			return
 		}
 		panic(err)

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net"
 	"net/url"
@@ -93,17 +94,19 @@ func writeAccessLog(connectionString string) {
 	// check connection status every 5 seconds
 	var emptyByteArray []byte
 	go func() {
+		reTry := false
 		for {
-			if conn != nil {
+			if conn != nil && reTry == false {
 				_, err = conn.Write(emptyByteArray)
 				if err != nil {
-					conn = nil
+					reTry = true
 				}
 			} else {
 				// TODO: tcp is hard-code, we need to remove that
 				newConn, err := net.Dial("tcp", url.Host)
 				if err == nil {
 					conn = newConn
+					reTry = false
 				}
 			}
 			time.Sleep(5 * time.Second)
@@ -124,7 +127,8 @@ func writeAccessLog(connectionString string) {
 					payload := msg.toByte()
 					payload = append(payload, empty) // when we use tcp, we need to add null byte in the end.
 					//g.log(payload)
-					_logger.debugf("[%v]payload size: %v", msg.LoggerName, len(payload)) // TODO: output is weird
+					msg := fmt.Sprintf("[%s]payload size: %d", msg.LoggerName, len(payload))
+					_logger.debug(msg)
 					conn.Write(payload)
 				}
 			}(message)
