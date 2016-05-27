@@ -317,6 +317,9 @@ func updateAPIEndpoint(c *napnap.Context) {
 	if err != nil {
 		panic(AppError{ErrorCode: "invalid_data", Message: err.Error()})
 	}
+	if len(target.Name) == 0 {
+		panic(AppError{ErrorCode: "invalid_data", Message: "name field can't be empty"})
+	}
 
 	api, err := _apiRepo.Get(apiID)
 	panicIf(err)
@@ -483,6 +486,9 @@ func updateServicesEndpoint(c *napnap.Context) {
 	err := c.BindJSON(&target)
 	if err != nil {
 		panic(AppError{ErrorCode: "invalid_data", Message: err.Error()})
+	}
+	if len(target.Name) == 0 {
+		panic(AppError{ErrorCode: "invalid_data", Message: "name field can't be empty"})
 	}
 
 	service, err := _serviceRepo.Get(serviceID)
