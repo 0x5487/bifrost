@@ -120,7 +120,7 @@ func (p *proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 		targetURL = apiEntry.TargetURL
 	}
 
-	if len(apiEntry.TargetURL) == 0 {
+	if len(targetURL) == 0 {
 		// no upstreams are available
 		c.SetStatus(503)
 		return
