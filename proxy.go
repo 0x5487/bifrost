@@ -95,44 +95,35 @@ func (p *proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	_logger.debugf("api host: %s", apiEntry.RequestHost)
 	_logger.debugf("api path: %s", apiEntry.RequestPath)
 
-	if len(apiEntry.TargetURL) == 0 && len(apiEntry.Service) == 0 {
-		// no upstreams are available
-		c.SetStatus(503)
-		return
-	}
-
 	var targetURL string
-	if len(apiEntry.TargetURL) > 0 {
-		// TODO: api's targetURL is not used at the point
-	}
-
 	var svcEntry *service
 	var upstreamEntry *upstream
 	if len(apiEntry.Service) > 0 {
-		var svc *service
 		for _, svcElement := range _services {
 			if apiEntry.Service == svcElement.Name {
-				svc = svcElement
+				svcEntry = svcElement
 			}
 		}
-		if svc == nil {
-			// no services were found
-			_logger.debug("services not found")
-			c.SetStatus(503)
-			return
+		if svcEntry != nil {
+			// get upstream and exchange url
+			upstreamEntry = svcEntry.askForUpstream()
+			if upstreamEntry != nil {
+				_logger.debugf("upstream: %v", upstreamEntry.Name)
+				targetURL = upstreamEntry.TargetURL
+			}
+
 		}
-		// get upstream and exchange url
-		u := svc.askForUpstream()
-		if u == nil {
-			// no upstreams are available
-			_logger.debug("upstream not found")
-			c.SetStatus(503)
-			return
-		}
-		_logger.debugf("upstream: %v", u.Name)
-		svcEntry = svc
-		upstreamEntry = u
-		targetURL = u.TargetURL
+	}
+
+	if (svcEntry == nil || upstreamEntry == nil) && len(apiEntry.TargetURL) > 0 {
+		_logger.debugf("api entry target url: %v", apiEntry.TargetURL)
+		targetURL = apiEntry.TargetURL
+	}
+
+	if len(apiEntry.TargetURL) == 0 {
+		// no upstreams are available
+		c.SetStatus(503)
+		return
 	}
 
 	var url string
@@ -215,12 +206,17 @@ func (p *proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	if err != nil {
 		// upsteam server is down
 		if strings.Contains(err.Error(), "No connection could be made") {
-			svcEntry.unregisterUpstream(upstreamEntry)
-			p.Invoke(c, next) // resend
+			if svcEntry != nil && upstreamEntry != nil {
+				svcEntry.unregisterUpstream(upstreamEntry)
+				p.Invoke(c, next) // resend
+				return
+			}
+			c.SetStatus(504)
 			return
 		}
 		// upstream server is timeout
-		if strings.Contains(err.Error(), "request canceled while waiting") {
+		if strings.Contains(err.Error(), "request canceled") {
+			_logger.debug("request canceled")
 			c.SetStatus(504)
 			return
 		}

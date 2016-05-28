@@ -119,7 +119,7 @@ func main() {
 
 	// set logs
 	if _config.Logs.Target.Type == "gelf" && len(_config.Logs.Target.ConnectionString) > 0 {
-		_messageChan = make(chan *gelfMessage, 20000)
+		_messageChan = make(chan *gelfMessage, 20000) // TODO: allow user to set the value via config file
 		go writeAccessLog(_config.Logs.Target.ConnectionString)
 		_logger.infof("log was enabled and connection string is %s", _config.Logs.Target.ConnectionString)
 
