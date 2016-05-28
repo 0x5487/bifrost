@@ -11,6 +11,7 @@ import (
 
 type status struct {
 	Hostname       string    `json:"hostname"`
+	ServerTime           time.Time `json:"server_time"`
 	NumCPU         int       `json:"cpu_core"`
 	TotalRequests  uint64    `json:"total_requests"`
 	NetworkIn      int64     `json:"network_in"`
