@@ -352,6 +352,45 @@ func deleteAPIEndpoint(c *napnap.Context) {
 	c.SetStatus(204)
 }
 
+func switchAPISource(c *napnap.Context) {
+	var target apiSwitch
+	err := c.BindJSON(&target)
+	if err != nil {
+		panic(AppError{ErrorCode: "invalid_data", Message: err.Error()})
+	}
+	if len(target.From) == 0 {
+		panic(AppError{ErrorCode: "invalid_data", Message: "from field can't be empty"})
+	}
+	if len(target.To) == 0 {
+		panic(AppError{ErrorCode: "invalid_data", Message: "to field can't be empty"})
+	}
+
+	apiFrom, err := _apiRepo.Get(target.From)
+	panicIf(err)
+	if apiFrom == nil {
+		apiFrom, err = _apiRepo.GetByName(target.From)
+	}
+	if apiFrom == nil {
+		panic(AppError{ErrorCode: "not_found", Message: "api of from field was not found"})
+	}
+
+	apiTo, err := _apiRepo.Get(target.To)
+	panicIf(err)
+	if apiTo == nil {
+		apiTo, err = _apiRepo.GetByName(target.To)
+	}
+	if apiTo == nil {
+		panic(AppError{ErrorCode: "not_found", Message: "api of to field was not found"})
+	}
+	apiFrom.switchSource(apiTo)
+
+	// reload api
+	_apis, err = _apiRepo.GetAll()
+	panicIf(err)
+	c.SetStatus(200)
+
+}
+
 func reloadAPIEndpoint(c *napnap.Context) {
 	var err error
 	_apis, err = _apiRepo.GetAll()

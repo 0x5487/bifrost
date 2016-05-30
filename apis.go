@@ -28,6 +28,11 @@ func newAPICollection() *apiCollection {
 	}
 }
 
+type apiSwitch struct {
+	From string `json:"from"`
+	To   string `json:"to"`
+}
+
 type api struct {
 	sync.RWMutex     `json:"-" bson:"-"`
 	ID               string    `json:"id" bson:"_id"`
@@ -43,6 +48,16 @@ type api struct {
 	Weight           int       `json:"weight" bson:"weight"`
 	CreatedAt        time.Time `json:"created_at" bson:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at" bson:"updated_at"`
+}
+
+func (a *api) switchSource(b *api) {
+	// swith
+	originalTarget := a.TargetURL
+	originalService := a.Service
+	a.TargetURL = b.TargetURL
+	b.TargetURL = originalTarget
+	a.Service = b.Service
+	b.Service = originalService
 }
 
 func (*api) isValid() bool {

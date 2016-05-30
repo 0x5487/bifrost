@@ -201,6 +201,7 @@ func main() {
 	adminRouter.Delete("/v1/tokens", deleteTokensEndpoint)
 
 	// api endpoints
+	adminRouter.Post("/v1/apis/switch", switchAPISource)
 	adminRouter.Put("/v1/apis/reload", reloadAPIEndpoint)
 	adminRouter.Get("/v1/apis/:api_id", getAPIEndpoint)
 	adminRouter.Delete("/v1/apis/:api_id", deleteAPIEndpoint)
