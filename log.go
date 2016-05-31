@@ -92,16 +92,11 @@ func writeAccessLog(connectionString string) {
 	}
 
 	// check connection status every 5 seconds
-	var emptyByteArray []byte
+	reTry := false
+	var empty byte
 	go func() {
-		reTry := false
 		for {
-			if conn != nil && reTry == false {
-				_, err = conn.Write(emptyByteArray)
-				if err != nil {
-					reTry = true
-				}
-			} else {
+			if conn == nil || reTry == true {
 				// TODO: tcp is hard-code, we need to remove that
 				newConn, err := net.Dial("tcp", url.Host)
 				if err == nil {
@@ -118,7 +113,7 @@ func writeAccessLog(connectionString string) {
 			ConnectionString: connectionString,
 		})
 	*/
-	var empty byte
+
 	for {
 		select {
 		case message := <-_messageChan:
@@ -129,7 +124,13 @@ func writeAccessLog(connectionString string) {
 					//g.log(payload)
 					msg := fmt.Sprintf("[%s]payload size: %d", msg.LoggerName, len(payload))
 					_logger.debug(msg)
-					conn.Write(payload)
+					_, err := conn.Write(payload)
+					if err != nil {
+						if reTry == false {
+							reTry = true
+						}
+						_logger.debug("failed to write")
+					}
 				}
 			}(message)
 		default:
