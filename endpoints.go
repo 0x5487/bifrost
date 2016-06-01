@@ -382,13 +382,18 @@ func switchAPISource(c *napnap.Context) {
 	if apiTo == nil {
 		panic(AppError{ErrorCode: "not_found", Message: "api of to field was not found"})
 	}
+
+	// update
+	err = _apiRepo.Update(apiFrom)
+	panicIf(err)
+	err = _apiRepo.Update(apiTo)
+	panicIf(err)
 	apiFrom.switchSource(apiTo)
 
 	// reload api
 	_apis, err = _apiRepo.GetAll()
 	panicIf(err)
 	c.SetStatus(200)
-
 }
 
 func reloadAPIEndpoint(c *napnap.Context) {
