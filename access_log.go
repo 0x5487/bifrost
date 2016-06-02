@@ -45,7 +45,7 @@ func (am *accessLogMiddleware) Invoke(c *napnap.Context, next napnap.HandlerFunc
 	accessLog := newGelfMessage(_app.hostname, _app.name, "access", 6)
 	accessLog.CustomFields["request_id"] = c.MustGet("request-id").(string)
 	accessLog.ShortMessage = fmt.Sprintf("%s %s [%d] %dms", c.Request.Method, c.Request.URL.Path, c.Writer.Status(), duration)
-	accessLog.CustomFields["origin"] = c.RequestHeader("Origin")
+	accessLog.CustomFields["request_host"] = c.Request.Host
 	accessLog.CustomFields["path"] = c.Request.URL.Path
 	accessLog.CustomFields["status"] = c.Writer.Status()
 	accessLog.CustomFields["content_length"] = c.Writer.ContentLength()
@@ -56,7 +56,7 @@ func (am *accessLogMiddleware) Invoke(c *napnap.Context, next napnap.HandlerFunc
 	cs, exist := c.Get("consumer")
 	if exist {
 		if consumer, ok := cs.(Consumer); ok && len(consumer.ID) > 0 {
-			accessLog.CustomFields["ConsumerID"] = consumer.ID
+			accessLog.CustomFields["consumer_id"] = consumer.ID
 		}
 	}
 

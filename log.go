@@ -93,7 +93,6 @@ func writeAccessLog(connectionString string) {
 
 	// check connection status every 5 seconds
 	reTry := false
-	var empty byte
 	go func() {
 		for {
 			if conn == nil || reTry == true {
@@ -113,7 +112,7 @@ func writeAccessLog(connectionString string) {
 			ConnectionString: connectionString,
 		})
 	*/
-
+	var empty byte
 	for {
 		select {
 		case message := <-_messageChan:
