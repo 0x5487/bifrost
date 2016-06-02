@@ -384,11 +384,11 @@ func switchAPISource(c *napnap.Context) {
 	}
 
 	// update
+	apiFrom.switchSource(apiTo)
 	err = _apiRepo.Update(apiFrom)
 	panicIf(err)
 	err = _apiRepo.Update(apiTo)
 	panicIf(err)
-	apiFrom.switchSource(apiTo)
 
 	// reload api
 	_apis, err = _apiRepo.GetAll()
