@@ -91,47 +91,42 @@ func writeAccessLog(connectionString string) {
 		}
 	}
 
-	// check connection status every 5 seconds
+	// check connection status every 1 second
 	reTry := false
 	go func() {
 		for {
 			if conn == nil || reTry == true {
-				// TODO: tcp is hard-code, we need to remove that
+				// TODO: tcp is hard-code at the point, we need to remove that later
 				newConn, err := net.Dial("tcp", url.Host)
 				if err == nil {
 					conn = newConn
 					reTry = false
+					_logger.debug("created new connection")
 				}
 			}
-			time.Sleep(5 * time.Second)
+			time.Sleep(1 * time.Second)
 		}
 	}()
 
-	/*
-		g := newGelf(gelfConfig{
-			ConnectionString: connectionString,
-		})
-	*/
 	var empty byte
 	for {
 		select {
 		case message := <-_messageChan:
-			go func(msg *gelfMessage) {
-				if conn != nil {
-					payload := msg.toByte()
-					payload = append(payload, empty) // when we use tcp, we need to add null byte in the end.
-					//g.log(payload)
-					msg := fmt.Sprintf("[%s]payload size: %d", msg.LoggerName, len(payload))
-					_logger.debug(msg)
-					_, err := conn.Write(payload)
-					if err != nil {
-						if reTry == false {
-							reTry = true
-						}
-						_logger.debug("failed to write")
+			if conn != nil {
+				payload := message.toByte()
+				payload = append(payload, empty) // when we use tcp, we need to add null byte in the end.
+				//g.log(payload)
+				msg := fmt.Sprintf("[%s]payload size: %d", message.LoggerName, len(payload))
+				_logger.debug(msg)
+				_, err := conn.Write(payload)
+				if err != nil {
+					_logger.debugf("failed to write: %v", err)
+					conn.Close()
+					if reTry == false {
+						reTry = true
 					}
 				}
-			}(message)
+			}
 		default:
 			time.Sleep(5 * time.Second)
 		}

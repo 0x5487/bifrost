@@ -8,29 +8,6 @@ import (
 	"github.com/jasonsoft/napnap"
 )
 
-type accessLog struct {
-	Version       string  `json:"version"`
-	Host          string  `json:"host"`
-	ShortMessage  string  `json:"short_message"`
-	FullMessage   string  `json:"full_message"`
-	Timestamp     float64 `json:"timestamp"`
-	RequestID     string  `json:"_request_id"`
-	Origin        string  `json:"_origin"`
-	Path          string  `json:"_path"`
-	Status        int     `json:"_status"`
-	ContentLength int     `json:"_content_length"`
-	ClientIP      string  `json:"_client_ip"`
-	ConsumerID    string  `json:"_consumer_id"`
-	Duration      int64   `json:"_duration"`
-	UserAgent     string  `json:"_userAgent"`
-}
-
-func newAccessLog() *accessLog {
-	return &accessLog{
-		Version: "1.1",
-	}
-}
-
 type accessLogMiddleware struct {
 }
 
