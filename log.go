@@ -115,16 +115,16 @@ func writeAccessLog(connectionString string) {
 			if conn != nil {
 				payload := message.toByte()
 				payload = append(payload, empty) // when we use tcp, we need to add null byte in the end.
-				//g.log(payload)
-				msg := fmt.Sprintf("[%s]payload size: %d", message.LoggerName, len(payload))
-				_logger.debug(msg)
-				_, err := conn.Write(payload)
+				wsize, err := conn.Write(payload)
 				if err != nil {
 					_logger.debugf("failed to write: %v", err)
 					conn.Close()
 					if reTry == false {
 						reTry = true
 					}
+				} else {
+					msg := fmt.Sprintf("[%s]payload size: %d", message.LoggerName, wsize)
+					_logger.debug(msg)
 				}
 			}
 		default:
