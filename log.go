@@ -92,16 +92,22 @@ func writeAccessLog(connectionString string) {
 	}
 
 	// check connection status every 1 second
-	reTry := false
 	go func() {
 		for {
-			if conn == nil || reTry == true {
+			if conn == nil {
 				// TODO: tcp is hard-code at the point, we need to remove that later
 				newConn, err := net.Dial("tcp", url.Host)
 				if err == nil {
 					conn = newConn
-					reTry = false
 					_logger.debug("created new connection")
+				}
+			} else {
+				// check connection is alive
+				one := []byte{}
+				if _, err := conn.Read(one); err != nil {
+					_logger.debugf("connection was closed: %v", err)
+					conn.Close()
+					conn = nil
 				}
 			}
 			time.Sleep(1 * time.Second)
@@ -119,16 +125,14 @@ func writeAccessLog(connectionString string) {
 				if err != nil {
 					_logger.debugf("failed to write: %v", err)
 					conn.Close()
-					if reTry == false {
-						reTry = true
-					}
+					conn = nil
 				} else {
 					msg := fmt.Sprintf("[%s]payload size: %d", message.LoggerName, wsize)
 					_logger.debug(msg)
 				}
 			}
 		default:
-			time.Sleep(5 * time.Second)
+			time.Sleep(3 * time.Second)
 		}
 	}
 }
