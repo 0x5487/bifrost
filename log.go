@@ -103,12 +103,14 @@ func writeAccessLog(connectionString string) {
 				}
 			} else {
 				// check connection is alive
-				one := []byte{}
-				if _, err := conn.Read(one); err != nil {
-					_logger.debugf("connection was closed: %v", err)
-					conn.Close()
-					conn = nil
-				}
+				/*
+					one := []byte{}
+					if _, err := conn.Read(one); err != nil {
+						_logger.debugf("connection was closed: %v", err)
+						conn.Close()
+						conn = nil
+					}
+				*/
 			}
 			time.Sleep(1 * time.Second)
 		}
