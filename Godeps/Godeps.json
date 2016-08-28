@@ -1,0 +1,84 @@
+{
+	"ImportPath": "github.com/jasonsoft/bifrost",
+	"GoVersion": "go1.7",
+	"GodepVersion": "v74",
+	"Deps": [
+		{
+			"ImportPath": "github.com/jasonsoft/napnap",
+			"Rev": "093a5ac4cbc00c34a98ce836a551efb6f152038e"
+		},
+		{
+			"ImportPath": "github.com/satori/go.uuid",
+			"Comment": "v1.1.0-1-g0aa62d5",
+			"Rev": "0aa62d5ddceb50dbcb909d790b5345affd3669b6"
+		},
+		{
+			"ImportPath": "gopkg.in/bsm/ratelimit.v1",
+			"Rev": "db14e161995a5177acef654cb0dd785e8ee8bc22"
+		},
+		{
+			"ImportPath": "gopkg.in/mgo.v2",
+			"Comment": "r2016.08.01-5-g3f83fa5",
+			"Rev": "3f83fa5005286a7fe593b055f0d7771a7dce4655"
+		},
+		{
+			"ImportPath": "gopkg.in/mgo.v2/bson",
+			"Comment": "r2016.08.01-5-g3f83fa5",
+			"Rev": "3f83fa5005286a7fe593b055f0d7771a7dce4655"
+		},
+		{
+			"ImportPath": "gopkg.in/mgo.v2/internal/json",
+			"Comment": "r2016.08.01-5-g3f83fa5",
+			"Rev": "3f83fa5005286a7fe593b055f0d7771a7dce4655"
+		},
+		{
+			"ImportPath": "gopkg.in/mgo.v2/internal/sasl",
+			"Comment": "r2016.08.01-5-g3f83fa5",
+			"Rev": "3f83fa5005286a7fe593b055f0d7771a7dce4655"
+		},
+		{
+			"ImportPath": "gopkg.in/mgo.v2/internal/scram",
+			"Comment": "r2016.08.01-5-g3f83fa5",
+			"Rev": "3f83fa5005286a7fe593b055f0d7771a7dce4655"
+		},
+		{
+			"ImportPath": "gopkg.in/redis.v4",
+			"Comment": "v4.1.5",
+			"Rev": "49f197e6d11de35192fce19b2b9fd2f9b8b13c4a"
+		},
+		{
+			"ImportPath": "gopkg.in/redis.v4/internal",
+			"Comment": "v4.1.5",
+			"Rev": "49f197e6d11de35192fce19b2b9fd2f9b8b13c4a"
+		},
+		{
+			"ImportPath": "gopkg.in/redis.v4/internal/consistenthash",
+			"Comment": "v4.1.5",
+			"Rev": "49f197e6d11de35192fce19b2b9fd2f9b8b13c4a"
+		},
+		{
+			"ImportPath": "gopkg.in/redis.v4/internal/errors",
+			"Comment": "v4.1.5",
+			"Rev": "49f197e6d11de35192fce19b2b9fd2f9b8b13c4a"
+		},
+		{
+			"ImportPath": "gopkg.in/redis.v4/internal/hashtag",
+			"Comment": "v4.1.5",
+			"Rev": "49f197e6d11de35192fce19b2b9fd2f9b8b13c4a"
+		},
+		{
+			"ImportPath": "gopkg.in/redis.v4/internal/pool",
+			"Comment": "v4.1.5",
+			"Rev": "49f197e6d11de35192fce19b2b9fd2f9b8b13c4a"
+		},
+		{
+			"ImportPath": "gopkg.in/redis.v4/internal/proto",
+			"Comment": "v4.1.5",
+			"Rev": "49f197e6d11de35192fce19b2b9fd2f9b8b13c4a"
+		},
+		{
+			"ImportPath": "gopkg.in/yaml.v2",
+			"Rev": "e4d366fc3c7938e2958e662b4258c7a89e1f0e3e"
+		}
+	]
+}
