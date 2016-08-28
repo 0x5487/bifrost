@@ -26,7 +26,7 @@ func identity(c *napnap.Context, next napnap.HandlerFunc) {
 	}
 
 	if token.isValid() == false {
-		err := _tokenRepo.Delete(token.Key)
+		err := _tokenRepo.Delete(token.ID)
 		if err != nil {
 			panic(err)
 		}

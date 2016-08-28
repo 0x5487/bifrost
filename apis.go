@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -9,6 +11,7 @@ import (
 
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
+	redis "gopkg.in/redis.v4"
 )
 
 type policy struct {
@@ -31,6 +34,21 @@ func newAPICollection() *apiCollection {
 type apiSwitch struct {
 	From string `json:"from"`
 	To   string `json:"to"`
+}
+
+type ByAPIWeight []*api
+
+func (source ByAPIWeight) Len() int {
+	return len(source)
+}
+func (source ByAPIWeight) Swap(i, j int) {
+	source[i], source[j] = source[j], source[i]
+}
+func (source ByAPIWeight) Less(i, j int) bool {
+	if source[i].Weight == source[j].Weight {
+		return source[i].CreatedAt.Before(source[j].CreatedAt)
+	}
+	return source[i].Weight < source[j].Weight
 }
 
 type api struct {
@@ -131,12 +149,15 @@ func (p policy) isMatch(kind string, consumer Consumer) bool {
 
 type APIRepository interface {
 	Get(id string) (*api, error)
-	GetByName(name string) (*api, error)
 	GetAll() ([]*api, error)
 	Insert(api *api) error
 	Update(api *api) error
 	Delete(id string) error
 }
+
+/*********************
+	Mongo Database
+*********************/
 
 type apiMongo struct {
 	connectionString string
@@ -297,5 +318,113 @@ func (ams *apiMongo) Delete(id string) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+/*********************
+	Redis Database
+*********************/
+
+type apiRedis struct {
+	client *redis.Client
+}
+
+func newAPIRedis(addr string, password string, db int) (*apiRedis, error) {
+	client := redis.NewClient(&redis.Options{
+		Addr:     addr,
+		Password: password,
+		DB:       db,
+	})
+
+	apiRedis := &apiRedis{
+		client: client,
+	}
+	return apiRedis, nil
+}
+
+func (source *apiRedis) Get(id string) (*api, error) {
+	key := "api:id:" + id
+	s, err := source.client.Get(key).Result()
+	if err != nil {
+		if err.Error() == "redis: nil" {
+			return nil, nil
+		}
+		panicIf(err)
+	}
+	var api api
+	err = json.Unmarshal([]byte(s), &api)
+	panicIf(err)
+
+	return &api, nil
+}
+
+func (source *apiRedis) GetAll() ([]*api, error) {
+	apiIDs, err := source.client.SMembers("apis").Result()
+	if err != nil {
+		if err.Error() == "redis: nil" {
+			return nil, nil
+		}
+		panicIf(err)
+	}
+
+	result := []*api{}
+	for _, val := range apiIDs {
+		api, err := source.Get(val)
+		panicIf(err)
+		if api != nil {
+			result = append(result, api)
+		}
+	}
+	sort.Sort(ByAPIWeight(result))
+	return result, nil
+}
+
+func (source *apiRedis) Insert(api *api) error {
+	api.ID = uuid.NewV4().String()
+	now := time.Now().UTC()
+	api.CreatedAt = now
+	api.UpdatedAt = now
+
+	// insert api:id
+	val, err := json.Marshal(api)
+	panicIf(err)
+	key := "api:id:" + api.ID
+	err = source.client.Set(key, val, 0).Err()
+	panicIf(err)
+
+	// insert apis
+	key = "apis"
+	err = source.client.SAdd(key, api.ID).Err()
+	panicIf(err)
+
+	return nil
+}
+
+func (source *apiRedis) Update(api *api) error {
+	if len(api.ID) == 0 {
+		return AppError{ErrorCode: "invalid_data", Message: "id can't be empty or null."}
+	}
+	now := time.Now().UTC()
+	api.UpdatedAt = now
+
+	val, err := json.Marshal(api)
+	panicIf(err)
+
+	key := "api:id:" + api.ID
+	err = source.client.Set(key, val, 0).Err()
+	panicIf(err)
+	return nil
+}
+
+func (source *apiRedis) Delete(id string) error {
+	// delete api:id
+	key := "api:id:" + id
+	err := source.client.Del(key).Err()
+	panicIf(err)
+
+	// delete apis
+	err = source.client.SRem("apis", id).Err()
+	panicIf(err)
+
 	return nil
 }

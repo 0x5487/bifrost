@@ -64,6 +64,12 @@ func getConsumerEndpoint(c *napnap.Context) {
 }
 
 func getConsumerCountEndpoint(c *napnap.Context) {
+	// redis provider doesn't support this feature.
+	if _config.Data.Type == "redis" {
+		c.SetStatus(501)
+		return
+	}
+
 	app := c.Query("app")
 	if len(app) == 0 {
 		panic(AppError{ErrorCode: "invalid_data", Message: "app field was missing or empty"})
@@ -93,19 +99,19 @@ func deletedConsumerEndpoint(c *napnap.Context) {
 		panic(AppError{ErrorCode: "not_found", Message: "consumer was not found"})
 	}
 
-	err = _consumerRepo.Delete(consumer.ID)
+	err = _consumerRepo.Delete(consumer)
 	panicIf(err)
 	c.JSON(204, nil)
 }
 
 func getTokenEndpoint(c *napnap.Context) {
-	key := c.Param("key")
+	id := c.Param("id")
 
-	if len(key) == 0 {
+	if len(id) == 0 {
 		panic(AppError{ErrorCode: "not_found", Message: "key was not found"})
 	}
 
-	token, err := _tokenRepo.Get(key)
+	token, err := _tokenRepo.Get(id)
 	panicIf(err)
 	if token == nil {
 		panic(AppError{ErrorCode: "not_found", Message: "token was not found"})
@@ -119,8 +125,9 @@ func listTokensEndpoint(c *napnap.Context) {
 	if len(consumerId) > 0 {
 		tokens, err := _tokenRepo.GetByConsumerID(consumerId)
 		panicIf(err)
-		if tokens == nil {
-			c.JSON(200, tokenCollection{})
+		if len(tokens) == 0 {
+			_tokenRepo.DeleteByConsumerID(consumerId) // for redis
+			c.JSON(200, newTokenCollection())
 			return
 		}
 		result := tokenCollection{
@@ -131,6 +138,8 @@ func listTokensEndpoint(c *napnap.Context) {
 		return
 	}
 	//TODO: find all tokens and pagination
+	c.SetStatus(501)
+	return
 }
 
 func createTokenEndpoint(c *napnap.Context) {
@@ -150,18 +159,17 @@ func createTokenEndpoint(c *napnap.Context) {
 		panic(AppError{ErrorCode: "not_found", Message: "consumer was not found."})
 	}
 
-	if len(target.Key) == 0 {
-		target.Key = uuid.NewV4().String()
+	if len(target.ID) == 0 {
+		target.ID = uuid.NewV4().String()
 	}
 
 	now := time.Now().UTC()
-	if target.Expiration.IsZero() {
-		target.Expiration = now.Add(time.Duration(_config.Token.Timeout) * time.Minute)
+	if target.ExpiresIn > 0 {
+		target.Expiration = now.Add(time.Duration(target.ExpiresIn) * time.Second)
 	} else {
-		if now.After(target.Expiration) {
-			panic(AppError{ErrorCode: "invalid_data", Message: "expiration field was invalid."})
-		}
+		target.Expiration = now.Add(time.Duration(_config.Token.Timeout) * time.Second)
 	}
+	target.ExpiresIn = int64(target.Expiration.Sub(now).Seconds())
 
 	err = _tokenRepo.Insert(&target)
 	panicIf(err)
@@ -185,19 +193,19 @@ func updateTokensEndpoint(c *napnap.Context) {
 }
 
 func deleteTokenEndpoint(c *napnap.Context) {
-	key := c.Param("key")
+	id := c.Param("id")
 
-	if len(key) == 0 {
+	if len(id) == 0 {
 		panic(AppError{ErrorCode: "not_found", Message: "token was not found"})
 	}
 
-	token, err := _tokenRepo.Get(key)
+	token, err := _tokenRepo.Get(id)
 	panicIf(err)
 	if token == nil {
 		panic(AppError{ErrorCode: "not_found", Message: "token was not found"})
 	}
 
-	err = _tokenRepo.Delete(key)
+	err = _tokenRepo.Delete(id)
 	panicIf(err)
 
 	c.SetStatus(204)
@@ -252,12 +260,16 @@ func createAPIEndpoint(c *napnap.Context) {
 	if len(target.Name) == 0 {
 		panic(AppError{ErrorCode: "invalid_data", Message: "name field can't be empty or null"})
 	}
-	api, err := _apiRepo.GetByName(target.Name)
-	panicIf(err)
-	if api != nil {
-		panic(AppError{ErrorCode: "invalid_data", Message: "name already exists"})
+	/*
+		api, err := _apiRepo.GetByName(target.Name)
+		panicIf(err)
+		if api != nil {
+			panic(AppError{ErrorCode: "invalid_data", Message: "name already exists"})
+		}
+	*/
+	if target.Whitelist == nil {
+		target.Whitelist = []string{}
 	}
-
 	err = _apiRepo.Insert(&target)
 	panicIf(err)
 	c.JSON(201, target)
@@ -324,13 +336,13 @@ func updateAPIEndpoint(c *napnap.Context) {
 	api, err := _apiRepo.Get(apiID)
 	panicIf(err)
 	if api == nil {
-		api, err = _apiRepo.GetByName(apiID)
-	}
-	if api == nil {
 		panic(AppError{ErrorCode: "not_found", Message: "api was not found"})
 	}
 
 	target.ID = api.ID
+	if target.Whitelist == nil {
+		target.Whitelist = []string{}
+	}
 	target.CreatedAt = api.CreatedAt
 	err = _apiRepo.Update(&target)
 	panicIf(err)
@@ -341,9 +353,6 @@ func deleteAPIEndpoint(c *napnap.Context) {
 	apiID := c.Param("api_id")
 	api, err := _apiRepo.Get(apiID)
 	panicIf(err)
-	if api == nil {
-		api, err = _apiRepo.GetByName(apiID)
-	}
 	if api == nil {
 		panic(AppError{ErrorCode: "not_found", Message: "api was not found"})
 	}
@@ -368,17 +377,11 @@ func switchAPISource(c *napnap.Context) {
 	apiFrom, err := _apiRepo.Get(target.From)
 	panicIf(err)
 	if apiFrom == nil {
-		apiFrom, err = _apiRepo.GetByName(target.From)
-	}
-	if apiFrom == nil {
 		panic(AppError{ErrorCode: "not_found", Message: "api of from field was not found"})
 	}
 
 	apiTo, err := _apiRepo.Get(target.To)
 	panicIf(err)
-	if apiTo == nil {
-		apiTo, err = _apiRepo.GetByName(target.To)
-	}
 	if apiTo == nil {
 		panic(AppError{ErrorCode: "not_found", Message: "api of to field was not found"})
 	}

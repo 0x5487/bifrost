@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"strings"
 	"sync"
 	"time"
@@ -8,6 +9,7 @@ import (
 	"github.com/satori/go.uuid"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
+	redis "gopkg.in/redis.v4"
 )
 
 type consumerCollection struct {
@@ -37,7 +39,7 @@ type ConsumerRepository interface {
 	GetByUsername(app string, username string) (*Consumer, error)
 	Insert(consumer *Consumer) error
 	Update(consumer *Consumer) error
-	Delete(id string) error
+	Delete(consumer *Consumer) error
 	Count(app string) (int, error)
 }
 
@@ -97,10 +99,10 @@ func (cs *ConsumerMemStore) Update(consumer *Consumer) error {
 	return nil
 }
 
-func (cs *ConsumerMemStore) Delete(id string) error {
+func (cs *ConsumerMemStore) Delete(consumer *Consumer) error {
 	cs.Lock()
 	defer cs.Unlock()
-	delete(cs.data, id)
+	delete(cs.data, consumer.ID)
 	return nil
 }
 
@@ -109,6 +111,10 @@ func (cs *ConsumerMemStore) Count(app string) (int, error) {
 	defer cs.RUnlock()
 	return len(cs.data), nil
 }
+
+/*********************
+	Mongo Database
+*********************/
 
 type consumerMongo struct {
 	connectionString string
@@ -230,7 +236,7 @@ func (cm *consumerMongo) Update(consumer *Consumer) error {
 	return nil
 }
 
-func (cm *consumerMongo) Delete(id string) error {
+func (cm *consumerMongo) Delete(consumer *Consumer) error {
 	session, err := cm.newSession()
 	if err != nil {
 		return err
@@ -238,7 +244,7 @@ func (cm *consumerMongo) Delete(id string) error {
 	defer session.Close()
 
 	c := session.DB("bifrost").C("consumers")
-	colQuerier := bson.M{"_id": id}
+	colQuerier := bson.M{"_id": consumer.ID}
 	err = c.Remove(colQuerier)
 	if err != nil {
 		return err
@@ -259,4 +265,118 @@ func (cm *consumerMongo) Count(app string) (int, error) {
 		return 0, err
 	}
 	return count, nil
+}
+
+/*********************
+	Redis Database
+*********************/
+
+type consumerRedis struct {
+	client *redis.Client
+}
+
+func newConsumerRedis(addr string, password string, db int) (*consumerRedis, error) {
+	client := redis.NewClient(&redis.Options{
+		Addr:     addr,
+		Password: password,
+		DB:       db,
+	})
+
+	consumerRedis := &consumerRedis{
+		client: client,
+	}
+
+	return consumerRedis, nil
+}
+
+func (source *consumerRedis) Get(id string) (*Consumer, error) {
+	key := "consumer:id:" + id
+	s, err := source.client.Get(key).Result()
+	if err != nil {
+		if err.Error() == "redis: nil" {
+			return nil, nil
+		}
+		panicIf(err)
+	}
+
+	var consumer Consumer
+	err = json.Unmarshal([]byte(s), &consumer)
+	panicIf(err)
+
+	return &consumer, nil
+}
+
+func (source *consumerRedis) GetByUsername(app string, username string) (*Consumer, error) {
+	key := "consumer:" + app + ":username:" + username
+	consumerID, err := source.client.Get(key).Result()
+	if err != nil {
+		if err.Error() == "redis: nil" {
+			return nil, nil
+		}
+		panicIf(err)
+	}
+
+	var consumer *Consumer
+	consumer, err = source.Get(consumerID)
+	panicIf(err)
+
+	return consumer, nil
+}
+
+func (source *consumerRedis) Insert(consumer *Consumer) error {
+	if len(consumer.App) == 0 {
+		return AppError{ErrorCode: "invalid_data", Message: "app filed was invalid."}
+	}
+	consumer.ID = uuid.NewV4().String()
+	now := time.Now().UTC()
+	consumer.CreatedAt = now
+	consumer.UpdatedAt = now
+
+	// insert to consumer:id
+	val, err := json.Marshal(consumer)
+	panicIf(err)
+	key := "consumer:id:" + consumer.ID
+	err = source.client.Set(key, val, 0).Err()
+	panicIf(err)
+
+	// insert to consumer:app:username
+	key = "consumer:" + consumer.App + ":username:" + consumer.Username
+	err = source.client.Set(key, consumer.ID, 0).Err()
+	panicIf(err)
+
+	return nil
+}
+
+func (source *consumerRedis) Update(consumer *Consumer) error {
+	if len(consumer.ID) == 0 {
+		return AppError{ErrorCode: "invalid_data", Message: "app filed was invalid."}
+	}
+	now := time.Now().UTC()
+	consumer.UpdatedAt = now
+
+	val, err := json.Marshal(consumer)
+	panicIf(err)
+
+	key := "consumer:id:" + consumer.ID
+	err = source.client.Set(key, val, 0).Err()
+	panicIf(err)
+	return nil
+}
+
+func (source *consumerRedis) Delete(consumer *Consumer) error {
+	// delete consumer:id
+	key := "consumer:id:" + consumer.ID
+	err := source.client.Del(key).Err()
+	panicIf(err)
+
+	// delete consumer:username
+	key = "consumer:" + consumer.App + ":username:" + consumer.Username
+	err = source.client.Del(key).Err()
+	panicIf(err)
+	return nil
+}
+
+func (source *consumerRedis) Count(app string) (int, error) {
+	// TODO: need to implement
+	return 0, nil
 }

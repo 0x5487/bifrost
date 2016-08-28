@@ -1,18 +1,25 @@
 package main
 
+import "errors"
+
+var ErrDataAddr = errors.New("config: data address can't be empty")
+
 type Header struct {
 	AddHeader string
 }
 
 type TokenSetting struct {
-	Timeout           int  `yaml:"timeout"`
-	VerifyIP          bool `yaml:"verify_ip"`
-	SlidingExpiration bool `yaml:"sliding_expiration"`
+	Timeout           int64 `yaml:"timeout"`
+	VerifyIP          bool  `yaml:"verify_ip"`
+	SlidingExpiration bool  `yaml:"sliding_expiration"`
 }
 
 type DataSetting struct {
-	Type             string
+	Type             string `yaml:"type"`
 	ConnectionString string `yaml:"connection_string"`
+	Address          string `yaml:"address"`
+	Password         string `yaml:"password"`
+	DB               string `yaml:"db"`
 }
 
 type Logs struct {
@@ -37,10 +44,10 @@ type Configuration struct {
 	ForwardRequestID bool     `yaml:"forward_requst_id"`
 	Data             DataSetting
 	Cors             struct {
-		Enable bool `yaml:"enable"`
+		Enable bool `yaml:"false"`
 	}
 	Gzip struct {
-		Enable bool `yaml:"enable"`
+		Enable bool `yaml:"false"`
 	}
 	Token TokenSetting
 }
@@ -52,12 +59,16 @@ func newConfiguration() Configuration {
 			Type: "memory",
 		},
 		Token: TokenSetting{
-			Timeout: 10,
+			Timeout: 1200, // 20 mins
 		},
 	}
 }
 
-func (c Configuration) isValid() error {
-	// TODO: need to implement the features
+func (c *Configuration) isValid() error {
+	if c.Data.Type == "redis" {
+		if len(c.Data.Address) == 0 {
+			return ErrDataAddr
+		}
+	}
 	return nil
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/satori/go.uuid"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
+	redis "gopkg.in/redis.v4"
 )
 
 type upstream struct {
@@ -116,6 +117,10 @@ type ServiceRepository interface {
 	Update(source *service) error
 	Delete(id string) error
 }
+
+/*********************
+	Mongo Database
+*********************/
 
 type serviceMongo struct {
 	connectionString string
@@ -265,5 +270,156 @@ func (sm *serviceMongo) Delete(id string) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+/*********************
+	Redis Database
+*********************/
+
+type serviceRedis struct {
+	client *redis.Client
+}
+
+func newServiceRedis(addr string, password string, db int) (*serviceRedis, error) {
+	client := redis.NewClient(&redis.Options{
+		Addr:     addr,
+		Password: password,
+		DB:       db,
+	})
+
+	serviceRedis := &serviceRedis{
+		client: client,
+	}
+	return serviceRedis, nil
+}
+
+func (source *serviceRedis) Get(id string) (*service, error) {
+	/*
+		session, err := sm.newSession()
+		if err != nil {
+			return nil, err
+		}
+		defer session.Close()
+
+		c := session.DB("bifrost").C("services")
+		service := service{}
+		err = c.FindId(id).One(&service)
+		if err != nil {
+			if err.Error() == "not found" {
+				return nil, nil
+			}
+			return nil, err
+		}
+	*/
+	return nil, nil
+}
+
+func (source *serviceRedis) GetByName(name string) (*service, error) {
+	/*
+		session, err := sm.newSession()
+		if err != nil {
+			return nil, err
+		}
+		defer session.Close()
+
+		c := session.DB("bifrost").C("services")
+		service := service{}
+		err = c.Find(bson.M{"name": name}).One(&service)
+		if err != nil {
+			if err.Error() == "not found" {
+				return nil, nil
+			}
+			return nil, err
+		}
+	*/
+	return nil, nil
+}
+
+func (source *serviceRedis) GetAll() ([]*service, error) {
+	/*
+		session, err := sm.newSession()
+		if err != nil {
+			return nil, err
+		}
+		defer session.Close()
+
+		c := session.DB("bifrost").C("services")
+		services := []*service{}
+		err = c.Find(bson.M{}).All(&services)
+		if err != nil {
+			if err.Error() == "not found" {
+				return nil, nil
+			}
+			return nil, err
+		}
+	*/
+	return nil, nil
+}
+
+func (srouce *serviceRedis) Insert(svc *service) error {
+	/*
+		session, err := sm.newSession()
+		if err != nil {
+			return err
+		}
+		defer session.Close()
+
+		c := session.DB("bifrost").C("services")
+		source.ID = uuid.NewV4().String()
+		now := time.Now().UTC()
+		source.CreatedAt = now
+		source.UpdatedAt = now
+		err = c.Insert(source)
+
+		if err != nil {
+			if strings.HasPrefix(err.Error(), "E11000") {
+				return AppError{ErrorCode: "invalid_data", Message: "The service already exits"}
+			}
+			return err
+		}
+	*/
+	return nil
+}
+
+func (source *serviceRedis) Update(svc *service) error {
+	/*
+		if len(source.ID) == 0 {
+			return AppError{ErrorCode: "invalid_data", Message: "id can't be empty or null."}
+		}
+		now := time.Now().UTC()
+		source.UpdatedAt = now
+
+		session, err := sm.newSession()
+		if err != nil {
+			return err
+		}
+		defer session.Close()
+
+		c := session.DB("bifrost").C("services")
+		colQuerier := bson.M{"_id": source.ID}
+		err = c.Update(colQuerier, source)
+		if err != nil {
+			return err
+		}
+	*/
+	return nil
+}
+
+func (source *serviceRedis) Delete(id string) error {
+	/*
+		session, err := sm.newSession()
+		if err != nil {
+			return err
+		}
+		defer session.Close()
+
+		c := session.DB("bifrost").C("services")
+		colQuerier := bson.M{"_id": id}
+		err = c.Remove(colQuerier)
+		if err != nil {
+			return err
+		}
+	*/
 	return nil
 }

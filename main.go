@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -64,7 +65,7 @@ func init() {
 
 	err = _config.isValid()
 	if err != nil {
-		log.Fatalf("config error: %v", err)
+		log.Fatal(err)
 	}
 
 	// setup logger
@@ -97,6 +98,25 @@ func init() {
 			panic(err)
 		}
 		_corsRepo, err = newCORSMongo(_config.Data.ConnectionString)
+		if err != nil {
+			panic(err)
+		}
+	}
+	if _config.Data.Type == "redis" {
+		db, err := strconv.Atoi(_config.Data.DB)
+		_apiRepo, err = newAPIRedis(_config.Data.Address, _config.Data.Password, db)
+		if err != nil {
+			panic(err)
+		}
+		_serviceRepo, err = newServiceRedis(_config.Data.Address, _config.Data.Password, db)
+		if err != nil {
+			panic(err)
+		}
+		_consumerRepo, err = newConsumerRedis(_config.Data.Address, _config.Data.Password, db)
+		if err != nil {
+			panic(err)
+		}
+		_tokenRepo, err = newTokenRedis(_config.Data.Address, _config.Data.Password, db)
 		if err != nil {
 			panic(err)
 		}
@@ -192,9 +212,9 @@ func main() {
 	adminRouter.Put("/v1/consumers", createOrupateConsumerEndpoint)
 
 	// token endpoints
-	adminRouter.Put("/v1/tokens/:key/expire", expireTokenEndpoint)
-	adminRouter.Get("/v1/tokens/:key", getTokenEndpoint)
-	adminRouter.Delete("/v1/tokens/:key", deleteTokenEndpoint)
+	//adminRouter.Put("/v1/tokens/:key/expire", expireTokenEndpoint) //deprecated
+	adminRouter.Get("/v1/tokens/:id", getTokenEndpoint)
+	adminRouter.Delete("/v1/tokens/:id", deleteTokenEndpoint)
 	adminRouter.Get("/v1/tokens", listTokensEndpoint)
 	adminRouter.Post("/v1/tokens", createTokenEndpoint)
 	adminRouter.Put("/v1/tokens", updateTokensEndpoint)
@@ -235,7 +255,7 @@ func main() {
 	wg.Add(2)
 	go func() {
 		// http server for admin api
-		err := adminNap.Run(":8001")
+		err := adminNap.Run(":10081")
 		if err != nil {
 			log.Fatal(err)
 		}

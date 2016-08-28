@@ -1,4 +1,5 @@
 *.exe
-.vscode
-bifrost
-config.yml
+/.vscode
+/bifrost
+/config.yml
+/debug

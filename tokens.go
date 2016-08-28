@@ -1,12 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"strings"
 	"sync"
 	"time"
 
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
+	redis "gopkg.in/redis.v4"
 
 	"github.com/satori/go.uuid"
 )
@@ -16,12 +18,19 @@ type tokenCollection struct {
 	Tokens []*Token `json:"tokens"`
 }
 
+func newTokenCollection() *tokenCollection {
+	return &tokenCollection{
+		Tokens: []*Token{},
+	}
+}
+
 type Token struct {
-	Key        string    `json:"key" bson:"_id"`
+	ID         string    `json:"id" bson:"_id"`
 	Source     string    `json:"source" bson:"source"`
 	ConsumerID string    `json:"consumer_id" bson:"consumer_id"`
 	IPAddress  string    `json:"ip_address" bson:"ip_address"`
-	Expiration time.Time `json:"expiration" bson:"expiration"`
+	ExpiresIn  int64     `json:"expires_in" bson:"-"`
+	Expiration time.Time `json:"Expiration" bson:"expiration"`
 	CreatedAt  time.Time `json:"created_at" bson:"created_at"`
 }
 
@@ -29,7 +38,7 @@ func newToken(consumerID string) *Token {
 	now := time.Now().UTC()
 	return &Token{
 		ConsumerID: consumerID,
-		Key:        uuid.NewV4().String(),
+		ID:         uuid.NewV4().String(),
 		Expiration: now.Add(time.Duration(_config.Token.Timeout) * time.Minute),
 		CreatedAt:  now,
 	}
@@ -88,23 +97,23 @@ func (ts *TokenMemStore) GetByConsumerID(consumerID string) ([]*Token, error) {
 func (ts *TokenMemStore) Insert(token *Token) error {
 	ts.Lock()
 	defer ts.Unlock()
-	oldToken := ts.data[token.Key]
+	oldToken := ts.data[token.ID]
 	if oldToken != nil {
 		return AppError{ErrorCode: "invalid_data", Message: "The token key already exits."}
 	}
 	token.CreatedAt = time.Now().UTC()
-	ts.data[token.Key] = token
+	ts.data[token.ID] = token
 	return nil
 }
 
 func (ts *TokenMemStore) Update(token *Token) error {
 	ts.Lock()
 	defer ts.Unlock()
-	oldToken := ts.data[token.Key]
+	oldToken := ts.data[token.ID]
 	if oldToken == nil {
 		return AppError{ErrorCode: "invalid_data", Message: "The token was not found."}
 	}
-	ts.data[token.Key] = token
+	ts.data[token.ID] = token
 	return nil
 }
 
@@ -120,11 +129,15 @@ func (ts *TokenMemStore) DeleteByConsumerID(consumerID string) error {
 	defer ts.Unlock()
 	for _, token := range ts.data {
 		if token.ConsumerID == consumerID {
-			delete(ts.data, token.Key)
+			delete(ts.data, token.ID)
 		}
 	}
 	return nil
 }
+
+/*********************
+	Mongo Database
+*********************/
 
 type tokenMongo struct {
 	connectionString string
@@ -224,7 +237,7 @@ func (tm *tokenMongo) Update(token *Token) error {
 	defer session.Close()
 
 	c := session.DB("bifrost").C("tokens")
-	colQuerier := bson.M{"_id": token.Key}
+	colQuerier := bson.M{"_id": token.ID}
 	err = c.Update(colQuerier, token)
 	if err != nil {
 		return err
@@ -261,5 +274,126 @@ func (tm *tokenMongo) DeleteByConsumerID(consumerID string) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+/*********************
+	Redis Database
+*********************/
+
+type tokenRedis struct {
+	client *redis.Client
+}
+
+func newTokenRedis(addr string, password string, db int) (*tokenRedis, error) {
+	client := redis.NewClient(&redis.Options{
+		Addr:     addr,
+		Password: password,
+		DB:       db,
+	})
+
+	tokenRedis := &tokenRedis{
+		client: client,
+	}
+	return tokenRedis, nil
+}
+
+func (source *tokenRedis) Get(id string) (*Token, error) {
+	key := "token:id:" + id
+	nowUTC := time.Now().UTC()
+	s, err := source.client.Get(key).Result()
+	if err != nil {
+		if err.Error() == "redis: nil" {
+			return nil, nil
+		}
+		panicIf(err)
+	}
+
+	var token Token
+	err = json.Unmarshal([]byte(s), &token)
+	panicIf(err)
+
+	token.ExpiresIn = int64(token.Expiration.Sub(nowUTC).Seconds())
+	return &token, nil
+}
+
+func (source *tokenRedis) GetByConsumerID(consumerID string) ([]*Token, error) {
+	key := "token:consumer:" + consumerID
+	tokenIDs, err := source.client.SMembers(key).Result()
+	if err != nil {
+		if err.Error() == "redis: nil" {
+			return nil, nil
+		}
+		panicIf(err)
+	}
+
+	var result []*Token
+	for _, val := range tokenIDs {
+		token, err := source.Get(val)
+		panicIf(err)
+		if token != nil {
+			result = append(result, token)
+		}
+	}
+	return result, nil
+}
+
+func (source *tokenRedis) Insert(token *Token) error {
+	now := time.Now().UTC()
+	token.CreatedAt = now
+
+	// insert for token:id
+	val, err := json.Marshal(token)
+	panicIf(err)
+	key := "token:id:" + token.ID
+	exp := token.Expiration.Sub(now)
+	err = source.client.Set(key, val, exp).Err()
+	panicIf(err)
+
+	// insert for token:consumer
+	key = "token:consumer:" + token.ConsumerID
+	err = source.client.SAdd(key, token.ID).Err()
+	panicIf(err)
+
+	// TODO: check token alrady exists
+	return nil
+}
+
+func (source *tokenRedis) Update(token *Token) error {
+	val, err := json.Marshal(token)
+	panicIf(err)
+
+	key := "token:id:" + token.ID
+	err = source.client.Set(key, val, 0).Err()
+	panicIf(err)
+	return nil
+}
+
+func (source *tokenRedis) Delete(id string) error {
+	key := "token:id:" + id
+	err := source.client.Del(key).Err()
+	panicIf(err)
+	return nil
+}
+
+func (source *tokenRedis) DeleteByConsumerID(consumerID string) error {
+	key := "token:consumer:" + consumerID
+	tokenIDs, err := source.client.SMembers(key).Result()
+	if err != nil {
+		if err.Error() == "redis: nil" {
+			return nil
+		}
+		panicIf(err)
+	}
+
+	for _, val := range tokenIDs {
+		err := source.Delete(val)
+		panicIf(err)
+	}
+
+	// delete token:consumer
+	err = source.client.Del(key).Err()
+	panicIf(err)
+
 	return nil
 }
