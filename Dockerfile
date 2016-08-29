@@ -1,4 +1,4 @@
-FROM ubuntu:14.04
+FROM ubuntu:16.04
 MAINTAINER Jason Lee <jawc@hotmail.com>
 
 RUN apt-get update -y && apt-get install -y
