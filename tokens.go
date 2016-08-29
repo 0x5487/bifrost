@@ -342,10 +342,17 @@ func (source *tokenRedis) Insert(token *Token) error {
 	now := time.Now().UTC()
 	token.CreatedAt = now
 
+	// check the token if exists
+	key := "token:id:" + token.ID
+	exists, err := source.client.Exists(key).Result()
+	panicIf(err)
+	if exists {
+		return AppError{ErrorCode: "invalid_data", Message: "The token key already exits"}
+	}
+
 	// insert for token:id
 	val, err := json.Marshal(token)
 	panicIf(err)
-	key := "token:id:" + token.ID
 	exp := token.Expiration.Sub(now)
 	err = source.client.Set(key, val, exp).Err()
 	panicIf(err)
@@ -355,7 +362,6 @@ func (source *tokenRedis) Insert(token *Token) error {
 	err = source.client.SAdd(key, token.ID).Err()
 	panicIf(err)
 
-	// TODO: check token alrady exists
 	return nil
 }
 
