@@ -1,0 +1,11 @@
+FROM alpine:3.4
+LABEL owner="Jason Lee"
+
+RUN apk update && \
+    apk upgrade && \
+    mkdir -p /jasonsoft/bifrost
+ADD bifrost /jasonsoft/bifrost/bifrost
+WORKDIR /jasonsoft/bifrost
+CMD ./bifrost
+
+HEALTHCHECK --interval=5s --timeout=10s CMD curl -f http://localhost/health || exit 1

@@ -134,7 +134,6 @@ func writeAccessLog(connectionString string) {
 				}
 			}
 		default:
-			time.Sleep(3 * time.Second)
 		}
 	}
 }
