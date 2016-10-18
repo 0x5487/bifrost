@@ -2,10 +2,10 @@ FROM ubuntu:16.04
 MAINTAINER Jason Lee <jawc@hotmail.com>
 
 RUN apt-get update -y && apt-get install -y
-RUN mkdir /opt/bifrost
+RUN mkdir /jasonsoft/bifrost
 
-ADD bifrost /opt/bifrost/bifrost
+ADD bifrost /jasonsoft/bifrost/bifrost
 
-WORKDIR /opt/bifrost
+WORKDIR /jasonsoft/bifrost
 
-CMD /opt/bifrost/bifrost
+CMD /jasonsoft/bifrost/bifrost

@@ -71,5 +71,6 @@ func identity(c *napnap.Context, next napnap.HandlerFunc) {
 	consumer = *(target)
 	_logger.debugf("consumer id: %v", consumer.ID)
 	c.Set("consumer", consumer)
+	c.Set("token", key)
 	next(c)
 }

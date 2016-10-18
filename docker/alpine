@@ -3,6 +3,8 @@ LABEL owner="Jason Lee"
 
 RUN apk update && \
     apk upgrade && \
+    apk add --no-cache curl && \
+    rm -rf /var/cache/apk/* && \
     mkdir -p /jasonsoft/bifrost
 ADD bifrost /jasonsoft/bifrost/bifrost
 WORKDIR /jasonsoft/bifrost

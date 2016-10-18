@@ -201,6 +201,13 @@ func (p *proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 		}
 	}
 
+	// forward token
+	val, ok := c.Get("token")
+	token, ook := val.(string)
+	if ok && ook && len(token) > 0 {
+		outReq.Header.Set("X-Token", token)
+	}
+
 	// send to target
 	resp, err := p.client.Do(outReq)
 	if err != nil {

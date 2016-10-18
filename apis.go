@@ -48,7 +48,7 @@ func (source ByAPIWeight) Less(i, j int) bool {
 	if source[i].Weight == source[j].Weight {
 		return source[i].CreatedAt.Before(source[j].CreatedAt)
 	}
-	return source[i].Weight < source[j].Weight
+	return source[i].Weight > source[j].Weight
 }
 
 type api struct {
