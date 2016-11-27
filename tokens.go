@@ -99,7 +99,7 @@ func (ts *TokenMemStore) Insert(token *Token) error {
 	defer ts.Unlock()
 	oldToken := ts.data[token.ID]
 	if oldToken != nil {
-		return AppError{ErrorCode: "invalid_data", Message: "The token key already exits."}
+		return AppError{ErrorCode: "invalid_input", Message: "The token key already exits."}
 	}
 	token.CreatedAt = time.Now().UTC()
 	ts.data[token.ID] = token
@@ -111,7 +111,7 @@ func (ts *TokenMemStore) Update(token *Token) error {
 	defer ts.Unlock()
 	oldToken := ts.data[token.ID]
 	if oldToken == nil {
-		return AppError{ErrorCode: "invalid_data", Message: "The token was not found."}
+		return AppError{ErrorCode: "invalid_input", Message: "The token was not found."}
 	}
 	ts.data[token.ID] = token
 	return nil
@@ -222,7 +222,7 @@ func (tm *tokenMongo) Insert(token *Token) error {
 	err = c.Insert(token)
 	if err != nil {
 		if strings.HasPrefix(err.Error(), "E11000") {
-			return AppError{ErrorCode: "invalid_data", Message: "The token key already exits"}
+			return AppError{ErrorCode: "invalid_input", Message: "The token key already exits"}
 		}
 		return err
 	}
@@ -347,7 +347,7 @@ func (source *tokenRedis) Insert(token *Token) error {
 	exists, err := source.client.Exists(key).Result()
 	panicIf(err)
 	if exists {
-		return AppError{ErrorCode: "invalid_data", Message: "The token key already exits"}
+		return AppError{ErrorCode: "invalid_input", Message: "The token key already exits"}
 	}
 
 	// insert for token:id

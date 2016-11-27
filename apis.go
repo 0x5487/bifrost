@@ -276,7 +276,7 @@ func (ams *apiMongo) Insert(api *api) error {
 
 	if err != nil {
 		if strings.HasPrefix(err.Error(), "E11000") {
-			return AppError{ErrorCode: "invalid_data", Message: "The api already exits"}
+			return AppError{ErrorCode: "invalid_input", Message: "The api already exits"}
 		}
 		return err
 	}
@@ -285,7 +285,7 @@ func (ams *apiMongo) Insert(api *api) error {
 
 func (ams *apiMongo) Update(api *api) error {
 	if len(api.ID) == 0 {
-		return AppError{ErrorCode: "invalid_data", Message: "id can't be empty or null."}
+		return AppError{ErrorCode: "invalid_input", Message: "id can't be empty or null."}
 	}
 	now := time.Now().UTC()
 	api.UpdatedAt = now
@@ -402,7 +402,7 @@ func (source *apiRedis) Insert(api *api) error {
 
 func (source *apiRedis) Update(api *api) error {
 	if len(api.ID) == 0 {
-		return AppError{ErrorCode: "invalid_data", Message: "id can't be empty or null."}
+		return AppError{ErrorCode: "invalid_input", Message: "id can't be empty or null."}
 	}
 	now := time.Now().UTC()
 	api.UpdatedAt = now

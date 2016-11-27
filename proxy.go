@@ -57,7 +57,7 @@ func (p *proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	_logger.debugf("request host: %v", c.Request.Host)
 	_logger.debugf("request path: %v", c.Request.URL.Path)
 
-	requestHost := strings.ToLower(c.Request.Host)
+	//requestHost := strings.ToLower(c.Request.Host)
 	requestPath := strings.ToLower(c.Request.URL.Path)
 
 	consumer := c.MustGet("consumer").(Consumer)
@@ -66,7 +66,7 @@ func (p *proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	var apiEntry *api
 	for _, apiElement := range _apis {
 		// ensure request host is match
-		if apiElement.RequestHost != "*" && !strings.EqualFold(apiElement.RequestHost, requestHost) {
+		if apiElement.RequestHost != "*" && !strings.EqualFold(apiElement.RequestHost, c.Request.Host) {
 			continue
 		}
 		// ensure request path is match

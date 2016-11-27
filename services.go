@@ -228,7 +228,7 @@ func (sm *serviceMongo) Insert(source *service) error {
 
 	if err != nil {
 		if strings.HasPrefix(err.Error(), "E11000") {
-			return AppError{ErrorCode: "invalid_data", Message: "The service already exits"}
+			return AppError{ErrorCode: "invalid_input", Message: "The service already exits"}
 		}
 		return err
 	}
@@ -237,7 +237,7 @@ func (sm *serviceMongo) Insert(source *service) error {
 
 func (sm *serviceMongo) Update(source *service) error {
 	if len(source.ID) == 0 {
-		return AppError{ErrorCode: "invalid_data", Message: "id can't be empty or null."}
+		return AppError{ErrorCode: "invalid_input", Message: "id can't be empty or null."}
 	}
 	now := time.Now().UTC()
 	source.UpdatedAt = now
@@ -374,7 +374,7 @@ func (srouce *serviceRedis) Insert(svc *service) error {
 
 		if err != nil {
 			if strings.HasPrefix(err.Error(), "E11000") {
-				return AppError{ErrorCode: "invalid_data", Message: "The service already exits"}
+				return AppError{ErrorCode: "invalid_input", Message: "The service already exits"}
 			}
 			return err
 		}
@@ -385,7 +385,7 @@ func (srouce *serviceRedis) Insert(svc *service) error {
 func (source *serviceRedis) Update(svc *service) error {
 	/*
 		if len(source.ID) == 0 {
-			return AppError{ErrorCode: "invalid_data", Message: "id can't be empty or null."}
+			return AppError{ErrorCode: "invalid_input", Message: "id can't be empty or null."}
 		}
 		now := time.Now().UTC()
 		source.UpdatedAt = now

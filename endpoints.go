@@ -13,15 +13,15 @@ func createOrupateConsumerEndpoint(c *napnap.Context) {
 	var target Consumer
 	err := c.BindJSON(&target)
 	if err != nil {
-		panic(AppError{ErrorCode: "invalid_data", Message: err.Error()})
+		panic(AppError{ErrorCode: "invalid_input", Message: err.Error()})
 	}
 
 	if len(target.Username) == 0 {
-		panic(AppError{ErrorCode: "invalid_data", Message: "username field is invalid."})
+		panic(AppError{ErrorCode: "invalid_input", Message: "username field is invalid."})
 	}
 
 	if len(target.App) == 0 {
-		panic(AppError{ErrorCode: "invalid_data", Message: "app field is invalid."})
+		panic(AppError{ErrorCode: "invalid_input", Message: "app field is invalid."})
 	}
 
 	consumer, err := _consumerRepo.GetByUsername(target.App, target.Username)
@@ -48,7 +48,7 @@ func getConsumerEndpoint(c *napnap.Context) {
 	consumerID := c.Param("consumer_id")
 	app := c.Query("app")
 	if len(app) == 0 {
-		panic(AppError{ErrorCode: "invalid_data", Message: "app field was missing or empty"})
+		panic(AppError{ErrorCode: "invalid_input", Message: "app field was missing or empty"})
 	}
 	consumer, err := _consumerRepo.Get(consumerID)
 	panicIf(err)
@@ -72,7 +72,7 @@ func getConsumerCountEndpoint(c *napnap.Context) {
 
 	app := c.Query("app")
 	if len(app) == 0 {
-		panic(AppError{ErrorCode: "invalid_data", Message: "app field was missing or empty"})
+		panic(AppError{ErrorCode: "invalid_input", Message: "app field was missing or empty"})
 	}
 	count, err := _consumerRepo.Count(app)
 	panicIf(err)
@@ -86,7 +86,7 @@ func deletedConsumerEndpoint(c *napnap.Context) {
 	consumerID := c.Param("consumer_id")
 	app := c.Query("app")
 	if len(app) == 0 {
-		panic(AppError{ErrorCode: "invalid_data", Message: "app field was missing or empty"})
+		panic(AppError{ErrorCode: "invalid_input", Message: "app field was missing or empty"})
 	}
 
 	consumer, err := _consumerRepo.Get(consumerID)
@@ -146,11 +146,11 @@ func createTokenEndpoint(c *napnap.Context) {
 	var target Token
 	err := c.BindJSON(&target)
 	if err != nil {
-		panic(AppError{ErrorCode: "invalid_data", Message: err.Error()})
+		panic(AppError{ErrorCode: "invalid_input", Message: err.Error()})
 	}
 
 	if len(target.ConsumerID) == 0 {
-		panic(AppError{ErrorCode: "invalid_data", Message: "consumer_id field was invalid."})
+		panic(AppError{ErrorCode: "invalid_input", Message: "consumer_id field was invalid."})
 	}
 
 	consumer, err := _consumerRepo.Get(target.ConsumerID)
@@ -180,7 +180,7 @@ func updateTokensEndpoint(c *napnap.Context) {
 	var tokens []Token
 	err := c.BindJSON(&tokens)
 	if err != nil {
-		panic(AppError{ErrorCode: "invalid_data", Message: err.Error()})
+		panic(AppError{ErrorCode: "invalid_input", Message: err.Error()})
 	}
 	if len(tokens) == 0 {
 		c.SetStatus(204)
@@ -255,16 +255,16 @@ func createAPIEndpoint(c *napnap.Context) {
 	var target api
 	err := c.BindJSON(&target)
 	if err != nil {
-		panic(AppError{ErrorCode: "invalid_data", Message: err.Error()})
+		panic(AppError{ErrorCode: "invalid_input", Message: err.Error()})
 	}
 	if len(target.Name) == 0 {
-		panic(AppError{ErrorCode: "invalid_data", Message: "name field can't be empty or null"})
+		panic(AppError{ErrorCode: "invalid_input", Message: "name field can't be empty or null"})
 	}
 	/*
 		api, err := _apiRepo.GetByName(target.Name)
 		panicIf(err)
 		if api != nil {
-			panic(AppError{ErrorCode: "invalid_data", Message: "name already exists"})
+			panic(AppError{ErrorCode: "invalid_input", Message: "name already exists"})
 		}
 	*/
 	if target.Whitelist == nil {
@@ -327,10 +327,10 @@ func updateAPIEndpoint(c *napnap.Context) {
 	var target api
 	err := c.BindJSON(&target)
 	if err != nil {
-		panic(AppError{ErrorCode: "invalid_data", Message: err.Error()})
+		panic(AppError{ErrorCode: "invalid_input", Message: err.Error()})
 	}
 	if len(target.Name) == 0 {
-		panic(AppError{ErrorCode: "invalid_data", Message: "name field can't be empty"})
+		panic(AppError{ErrorCode: "invalid_input", Message: "name field can't be empty"})
 	}
 
 	api, err := _apiRepo.Get(apiID)
@@ -365,13 +365,13 @@ func switchAPISource(c *napnap.Context) {
 	var target apiSwitch
 	err := c.BindJSON(&target)
 	if err != nil {
-		panic(AppError{ErrorCode: "invalid_data", Message: err.Error()})
+		panic(AppError{ErrorCode: "invalid_input", Message: err.Error()})
 	}
 	if len(target.From) == 0 {
-		panic(AppError{ErrorCode: "invalid_data", Message: "from field can't be empty"})
+		panic(AppError{ErrorCode: "invalid_input", Message: "from field can't be empty"})
 	}
 	if len(target.To) == 0 {
-		panic(AppError{ErrorCode: "invalid_data", Message: "to field can't be empty"})
+		panic(AppError{ErrorCode: "invalid_input", Message: "to field can't be empty"})
 	}
 
 	apiFrom, err := _apiRepo.Get(target.From)
@@ -410,7 +410,7 @@ func createOrUpdateCORSEndpoint(c *napnap.Context) {
 	var target configCORS
 	err := c.BindJSON(&target)
 	if err != nil {
-		panic(AppError{ErrorCode: "invalid_data", Message: err.Error()})
+		panic(AppError{ErrorCode: "invalid_input", Message: err.Error()})
 	}
 
 	cors, err := _corsRepo.Get()
@@ -462,15 +462,15 @@ func createServicesEndpoint(c *napnap.Context) {
 	var target service
 	err := c.BindJSON(&target)
 	if err != nil {
-		panic(AppError{ErrorCode: "invalid_data", Message: err.Error()})
+		panic(AppError{ErrorCode: "invalid_input", Message: err.Error()})
 	}
 	if len(target.Name) == 0 {
-		panic(AppError{ErrorCode: "invalid_data", Message: "name field can't be empty or null"})
+		panic(AppError{ErrorCode: "invalid_input", Message: "name field can't be empty or null"})
 	}
 	service, err := _serviceRepo.GetByName(target.Name)
 	panicIf(err)
 	if service != nil {
-		panic(AppError{ErrorCode: "invalid_data", Message: "name already exists"})
+		panic(AppError{ErrorCode: "invalid_input", Message: "name already exists"})
 	}
 
 	target.Upstreams = []*upstream{}
@@ -532,10 +532,10 @@ func updateServicesEndpoint(c *napnap.Context) {
 	var target service
 	err := c.BindJSON(&target)
 	if err != nil {
-		panic(AppError{ErrorCode: "invalid_data", Message: err.Error()})
+		panic(AppError{ErrorCode: "invalid_input", Message: err.Error()})
 	}
 	if len(target.Name) == 0 {
-		panic(AppError{ErrorCode: "invalid_data", Message: "name field can't be empty"})
+		panic(AppError{ErrorCode: "invalid_input", Message: "name field can't be empty"})
 	}
 
 	service, err := _serviceRepo.Get(serviceID)
@@ -574,12 +574,12 @@ func registerServiceUpstreamEndpoint(c *napnap.Context) {
 	var target upstream
 	err := c.BindJSON(&target)
 	if err != nil {
-		panic(AppError{ErrorCode: "invalid_data", Message: err.Error()})
+		panic(AppError{ErrorCode: "invalid_input", Message: err.Error()})
 	}
 
 	// verify input
 	if len(target.TargetURL) == 0 {
-		panic(AppError{ErrorCode: "invalid_data", Message: "target_url field was missing or empty"})
+		panic(AppError{ErrorCode: "invalid_input", Message: "target_url field was missing or empty"})
 	}
 
 	serviceID := c.Param("service_id")

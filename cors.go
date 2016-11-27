@@ -104,7 +104,7 @@ func (cm *CORSMongo) Insert(source *configCORS) error {
 	err = c.Insert(source)
 	if err != nil {
 		if strings.HasPrefix(err.Error(), "E11000") {
-			return AppError{ErrorCode: "invalid_data", Message: "The config already exists"}
+			return AppError{ErrorCode: "invalid_input", Message: "The config already exists"}
 		}
 		return err
 	}
