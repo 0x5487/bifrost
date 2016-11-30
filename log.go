@@ -117,23 +117,19 @@ func writeAccessLog(connectionString string) {
 	}()
 
 	var empty byte
-	for {
-		select {
-		case message := <-_messageChan:
-			if conn != nil {
-				payload := message.toByte()
-				payload = append(payload, empty) // when we use tcp, we need to add null byte in the end.
-				wsize, err := conn.Write(payload)
-				if err != nil {
-					_logger.debugf("failed to write: %v", err)
-					conn.Close()
-					conn = nil
-				} else {
-					msg := fmt.Sprintf("[%s]payload size: %d", message.LoggerName, wsize)
-					_logger.debug(msg)
-				}
+	for message := range _messageChan {
+		if conn != nil {
+			payload := message.toByte()
+			payload = append(payload, empty) // when we use tcp, we need to add null byte in the end.
+			wsize, err := conn.Write(payload)
+			if err != nil {
+				_logger.debugf("failed to write: %v", err)
+				conn.Close()
+				conn = nil
+			} else {
+				msg := fmt.Sprintf("[%s]payload size: %d", message.LoggerName, wsize)
+				_logger.debug(msg)
 			}
-		default:
 		}
 	}
 }
