@@ -5,7 +5,7 @@
 	"Deps": [
 		{
 			"ImportPath": "github.com/jasonsoft/napnap",
-			"Rev": "093a5ac4cbc00c34a98ce836a551efb6f152038e"
+			"Rev": "299da982dcc410a77a35996dbbdfa685ca43beb3"
 		},
 		{
 			"ImportPath": "github.com/satori/go.uuid",

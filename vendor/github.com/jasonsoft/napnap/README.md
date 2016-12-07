@@ -95,7 +95,7 @@ import (
 func main() {
 	router := napnap.NewRouter()
 
-	router.Get("/querystring-value", func(c *napnap.Context) {
+	router.Get("/test?page=1", func(c *napnap.Context) {
 		page := c.Query("page") //get query string value
 		c.String(200, page)
 	})
@@ -179,6 +179,26 @@ func main() {
 	nap := napnap.New()
 	nap.Use(router)
 	nap.Run(":8080") //run on port 8080
+}
+```
+
+#### Http/2 Server
+
+```go
+package main
+
+import "github.com/jasonsoft/napnap"
+
+func main() {
+	router := napnap.NewRouter()
+
+	router.Get("/hello-world", func(c *napnap.Context) {
+		c.String(200, "Hello, World")
+	})
+
+	nap := napnap.New()
+	nap.Use(router)
+	nap.RunTLS(":443", "cert.crt", "key.pem") // nap will use http/2 server as default
 }
 ```
 

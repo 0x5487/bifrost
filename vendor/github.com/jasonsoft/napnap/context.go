@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -36,6 +37,7 @@ func NewContext(napnap *NapNap, req *http.Request, writer ResponseWriter) *Conte
 
 // Render returns html format
 func (c *Context) Render(code int, viewName string, data interface{}) (err error) {
+	c.Writer.Header().Set("Content-Type", "text/html; charset=utf-8")
 	c.Writer.WriteHeader(code)
 	c.NapNap.template.ExecuteTemplate(c.Writer, viewName, data)
 	return
@@ -88,6 +90,11 @@ func (c *Context) Query(key string) string {
 		c.query = c.Request.URL.Query()
 	}
 	return c.query.Get(key)
+}
+
+// QueryInt returns query parameter by key and cast the value to int.
+func (c *Context) QueryInt(key string) (int, error) {
+	return strconv.Atoi(c.Query(key))
 }
 
 // Form returns form parameter by key.
@@ -145,6 +152,11 @@ func (c *Context) Param(name string) string {
 		}
 	}
 	return ""
+}
+
+// ParamInt returns parameter by key and cast the value to int.
+func (c *Context) ParamInt(key string) (int, error) {
+	return strconv.Atoi(c.Param(key))
 }
 
 // RemoteIPAddress returns the remote ip address, it parses
@@ -233,6 +245,39 @@ func (c *Context) RespHeader(key, value string) {
 // RequestHeader is a intelligent shortcut for c.Request.Header.Get(key)
 func (c *Context) RequestHeader(key string) string {
 	return c.Request.Header.Get(key)
+}
+
+// DeviceType returns user's device type which includes web, mobile, tab, tv
+func (c *Context) DeviceType(key string) string {
+	userAgent := c.RequestHeader("User-Agent")
+	deviceType := "web"
+
+	if strings.Contains(userAgent, "Android") ||
+		strings.Contains(userAgent, "webOS") ||
+		strings.Contains(userAgent, "iPhone") ||
+		strings.Contains(userAgent, "BlackBerry") ||
+		strings.Contains(userAgent, "Windows Phone") {
+		deviceType = "mobile"
+	} else if strings.Contains(userAgent, "iPad") ||
+		strings.Contains(userAgent, "iPod") ||
+		(strings.Contains(userAgent, "tablet") ||
+			strings.Contains(userAgent, "RX-34") ||
+			strings.Contains(userAgent, "FOLIO")) ||
+		(strings.Contains(userAgent, "Kindle") ||
+			strings.Contains(userAgent, "Mac OS") &&
+				strings.Contains(userAgent, "Silk")) ||
+		(strings.Contains(userAgent, "AppleWebKit") &&
+			strings.Contains(userAgent, "Silk")) {
+		deviceType = "tab"
+	} else if strings.Contains(userAgent, "TV") ||
+		strings.Contains(userAgent, "NetCast") ||
+		strings.Contains(userAgent, "boxee") ||
+		strings.Contains(userAgent, "Kylo") ||
+		strings.Contains(userAgent, "Roku") ||
+		strings.Contains(userAgent, "DLNADOC") {
+		deviceType = "tv"
+	}
+	return deviceType
 }
 
 func (c *Context) reset(w http.ResponseWriter, req *http.Request) {

@@ -120,6 +120,10 @@ func init() {
 		if err != nil {
 			panic(err)
 		}
+		_corsRepo, err = newCorsRedis(_config.Data.Address, _config.Data.Password, db)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	_app = newApplication()
@@ -255,7 +259,8 @@ func main() {
 	wg.Add(2)
 	go func() {
 		// http server for admin api
-		err := adminNap.Run(":10081")
+		httpEngine := napnap.NewHttpEngine(":10081")
+		err := adminNap.Run(httpEngine)
 		if err != nil {
 			log.Fatal(err)
 		}

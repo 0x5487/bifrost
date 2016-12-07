@@ -112,8 +112,8 @@ func (nap *NapNap) SetTemplate(t *template.Template) {
 	nap.template = t
 }
 
-// SetViews function allows user to set template location.
-func (nap *NapNap) SetViews(path string) {
+// SetRender function allows user to set template location.
+func (nap *NapNap) SetRender(path string) {
 	tmpl, err := template.ParseGlob(path)
 
 	if err != nil {
@@ -127,12 +127,19 @@ func (nap *NapNap) SetViews(path string) {
 	nap.template = template
 }
 
-// Run http server
-func (nap *NapNap) Run(addr string) error {
-	//fmt.Println(fmt.Sprintf("listening on %s", addr))
-	return http.ListenAndServe(addr, nap)
+// Run will run http server
+func (nap *NapNap) Run(engine *Server) error {
+	engine.Handler = nap
+	return engine.ListenAndServe()
 }
 
+// RunTLS will run http/2 server
+func (nap *NapNap) RunTLS(engine *Server) error {
+	engine.Handler = nap
+	return engine.ListenAndServeTLS(engine.Config.TLSCertFile, engine.Config.TLSKeyFile)
+}
+
+// RunAll will listen on multiple port
 func (nap *NapNap) RunAll(addrs []string) error {
 	if len(addrs) == 0 {
 		return errors.New("addrs can't be empty")

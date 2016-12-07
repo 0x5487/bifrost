@@ -1,11 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"strings"
 	"time"
 
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
+	redis "gopkg.in/redis.v4"
 )
 
 type configCORS struct {
@@ -35,6 +37,10 @@ type CORSRepository interface {
 	Update(*configCORS) error
 	Delete() error
 }
+
+/*********************
+	Mongo Database
+*********************/
 
 type CORSMongo struct {
 	connectionString string
@@ -136,4 +142,86 @@ func (cm *CORSMongo) Delete() error {
 
 func verifyOrigin(origin string) bool {
 	return _cors.verifyOrigin(origin)
+}
+
+/*********************
+	Redis Database
+*********************/
+
+type corsRedis struct {
+	client *redis.Client
+}
+
+func newCorsRedis(addr string, password string, db int) (*corsRedis, error) {
+	client := redis.NewClient(&redis.Options{
+		Addr:     addr,
+		Password: password,
+		DB:       db,
+	})
+
+	corsRedis := &corsRedis{
+		client: client,
+	}
+
+	return corsRedis, nil
+}
+
+func (cr *corsRedis) Insert(source *configCORS) error {
+	nowUTC := time.Now().UTC()
+	source.Name = "cors"
+	source.CreatedAt = nowUTC
+	source.UpdatedAt = nowUTC
+
+	// insert to config:cors
+	val, err := json.Marshal(source)
+	if err != nil {
+		return err
+	}
+	key := "config:cors"
+	err = cr.client.Set(key, val, 0).Err()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (cr *corsRedis) Get() (*configCORS, error) {
+	key := "config:cors"
+	s, err := cr.client.Get(key).Result()
+	if err != nil {
+		if err == redis.Nil {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	var result configCORS
+	err = json.Unmarshal([]byte(s), &result)
+	if err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+func (cr *corsRedis) Update(source *configCORS) error {
+	nowUtc := time.Now().UTC()
+	source.UpdatedAt = nowUtc
+
+	// update to config:cors
+	val, err := json.Marshal(source)
+	if err != nil {
+		return err
+	}
+	key := "config:cors"
+	err = cr.client.Set(key, val, 0).Err()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (cr *corsRedis) Delete() error {
+	return nil
 }
