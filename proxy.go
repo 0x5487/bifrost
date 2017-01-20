@@ -177,6 +177,13 @@ func (p *proxy) Invoke(c *napnap.Context, next napnap.HandlerFunc) {
 	}
 
 	// forward consumer information
+	for k := range outReq.Header {
+		// delete all header value start with X-Consumer
+		if strings.HasPrefix(k, "X-Consumer") {
+			outReq.Header.Del(k)
+		}
+	}
+
 	if len(consumer.ID) > 0 {
 		outReq.Header.Set("X-Consumer-Id", consumer.ID)
 		if len(consumer.App) > 0 {

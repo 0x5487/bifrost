@@ -30,7 +30,7 @@ type Token struct {
 	ConsumerID string    `json:"consumer_id" bson:"consumer_id"`
 	IPAddress  string    `json:"ip_address" bson:"ip_address"`
 	ExpiresIn  int64     `json:"expires_in" bson:"-"`
-	Expiration time.Time `json:"Expiration" bson:"expiration"`
+	Expiration time.Time `json:"expiration" bson:"expiration"`
 	CreatedAt  time.Time `json:"created_at" bson:"created_at"`
 }
 
