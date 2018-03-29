@@ -175,6 +175,7 @@ func newAPIMongo(connectionString string) (*apiMongo, error) {
 	nameIdx := mgo.Index{
 		Name:       "api_name_idx",
 		Key:        []string{"name"},
+		Unique:     true,
 		Background: true,
 		Sparse:     true,
 	}

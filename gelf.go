@@ -52,7 +52,7 @@ func (m *gelfMessage) toByte() []byte {
 	items["short_message"] = m.ShortMessage
 	items["full_message"] = m.FullMessage
 	items["timestamp"] = m.Timestamp
-	items["_facility"] = m.Facility
+	items["_app_id"] = m.Facility
 	items["_logger_name"] = m.LoggerName
 
 	for k, v := range m.CustomFields {

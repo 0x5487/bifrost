@@ -50,6 +50,11 @@ type Configuration struct {
 		Enable bool `yaml:"enable"`
 	}
 	Token TokenSetting
+	TLS   struct {
+		Enable               bool     `yaml:"enable"`
+		Addr                 string   `yaml:"addr"`
+		ApplyCertDomainNames []string `yaml:"apply_cert_domain_names"`
+	}
 }
 
 func newConfiguration() Configuration {

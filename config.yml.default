@@ -1,4 +1,8 @@
 binds: [":8080"]
+tls:
+    enable: on
+    addr: ":443"
+    apply_cert_domain_names: ["ps.abc.com"]
 data:
     type: mongodb 
     connection_string: 

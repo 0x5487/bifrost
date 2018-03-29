@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"io/ioutil"
 	"log"
@@ -11,6 +12,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/crypto/acme/autocert"
 
 	"github.com/jasonsoft/napnap"
 	"gopkg.in/yaml.v2"
@@ -256,7 +259,7 @@ func main() {
 	// run two http servers on different ports
 	// one is for bifrost service and another is for admin api
 	wg := &sync.WaitGroup{}
-	wg.Add(2)
+	wg.Add(3)
 	go func() {
 		// http server for admin api
 		httpEngine := napnap.NewHttpEngine(":10081")
@@ -271,6 +274,26 @@ func main() {
 		err := nap.RunAll(_config.Binds)
 		if err != nil {
 			log.Fatal(err)
+		}
+		wg.Done()
+	}()
+	go func() {
+		if _config.TLS.Enable {
+			m := autocert.Manager{
+				Prompt:     autocert.AcceptTOS,
+				HostPolicy: autocert.HostWhitelist(_config.TLS.ApplyCertDomainNames...),
+				Cache:      autocert.DirCache("./certs"),
+			}
+
+			s := &http.Server{
+				Addr:      _config.TLS.Addr,
+				TLSConfig: &tls.Config{GetCertificate: m.GetCertificate},
+				Handler:   nap,
+			}
+			err := s.ListenAndServeTLS("", "")
+			if err != nil {
+				log.Fatal(err)
+			}
 		}
 		wg.Done()
 	}()
